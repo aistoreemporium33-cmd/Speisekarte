@@ -1,0 +1,7 @@
+{
+  "name": "Rheinhafen Restaurant App",
+  "description": "A dynamic restaurant application for Rheinhafen Kleinhüningen, featuring a real-time digital menu, staff administration panel, social media feed simulation, and AI-powered translation.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
