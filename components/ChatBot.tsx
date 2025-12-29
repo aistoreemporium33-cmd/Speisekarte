@@ -36,33 +36,23 @@ async function decodeAudioData(audioData: ArrayBuffer): Promise<AudioBuffer> {
 }
 
 const getGreeting = (lang: Language, ny?: boolean): string => {
-    if (ny) {
-        switch (lang) {
-            case 'de': return "Buongiorno! Mio amico, einen guten Rutsch-e! Isch bin Enzo. Villkommen zur Gala! Darf isch Ihnen ein Glas Champagner bringen? Mamma Mia, 2026 wird incredibile!";
-            case 'it': return "Buongiorno carissimo! Felice Anno Nuovo! Sono Enzo. Benvenuti alla nostra festa di San Silvestro! Cosa posso servirvi per brindare al futuro? Mizzica, che notte!";
-            case 'fr': return "Bonjour mon ami! Bonne année! Je suis Enzo. Bienvenue au gala! Puis-je vous apporter un verre de champagne pour trinquer ? C'est magnifique, non ?";
-            case 'tr': return "Merhaba dostum! Mutlu yıllar! Ben Enzo. Rheinhafen Galasına hoş geldiniz! Kadeh kaldırmak için şampanya getireyim mi? Mamma Mia, harika bir gece!";
-            case 'en': return "Buongiorno! Happy New Year my friend-a! I am Enzo. Welcome-a to our Gala-night! Shall we start with the fine bubbles? Mamma Mia, look at the stars!";
-            default: return "Buongiorno! Welcome!";
-        }
-    }
     switch (lang) {
-        case 'de': return "Buongiorno! Isch bin Enzo. Villkommen im Rheinhafen! Vas darf isch Ihnen heute Gutes bringen, mio amico?";
-        case 'it': return "Buongiorno! Sono Enzo. Benvenuti al Rheinhafen! Cosa posso portarvi di delizioso oggi?";
-        case 'fr': return "Bonjour! Je suis Enzo. Bienvenue au Rheinhafen ! Que puis-je vous servir de bon aujourd'hui, carissimo ?";
-        case 'tr': return "Merhaba! Ben Enzo. Rheinhafen'e hoş geldiniz! Bugün size ne ikram edebilirim, dostum?";
-        case 'en': return "Buongiorno! I am Enzo-a. Welcome to Rheinhafen-a! What can I bring-a for you today, my friend?";
-        default: return "Buongiorno! I am Enzo. Welcome!";
+        case 'de': return "Buongiorno! Isch bin Enzo. Wir haben bis zum nächsten Samstag Renovierarbeiten-e und wir wünschen alle ein guten rutsch! Ciao bis zum nächsten Samstag!";
+        case 'it': return "Buongiorno! Sono Enzo. Abbiamo lavori di ristrutturazione fino a sabato prossimo e auguriamo a tutti un felice anno nuovo! Ciao, a sabato prossimo!";
+        case 'fr': return "Bonjour! Je suis Enzo. Nous avons des travaux de rénovation jusqu'à samedi prochain et nous souhaitons à tous une bonne année ! Ciao, à samedi prochain !";
+        case 'tr': return "Merhaba! Ben Enzo. Gelecek Cumartesiye kadar tadilat işlerimiz var ve herkese iyi seneler diliyoruz! Ciao, gelecek Cumartesi görüşmek üzere!";
+        case 'en': return "Buongiorno! I am Enzo. We have renovation work until next Saturday and we wish everyone a happy New Year! Ciao, see you next Saturday!";
+        default: return "Buongiorno! We are renovating until next Saturday. Happy New Year! Ciao bis zum nächsten Samstag!";
     }
 };
 
 const getPlaceholder = (lang: Language): string => {
     switch (lang) {
-        case 'de': return "Frag Enzo nach Empfehlungen...";
-        case 'it': return "Chiedi consigli a Enzo...";
+        case 'de': return "Frag Enzo nach der Eröffnung...";
+        case 'it': return "Chiedi a Enzo della riapertura...";
         case 'fr': return "Demander à Enzo...";
         case 'tr': return "Enzo'ya sor...";
-        case 'en': return "Ask Enzo for advice...";
+        case 'en': return "Ask Enzo about reopening...";
         default: return "Message Enzo...";
     }
 };
@@ -148,7 +138,7 @@ export const ChatBot: React.FC<Props> = ({ menu, posts, language, autoStart = fa
       chatSessionRef.current = ai.chats.create({
         model: 'gemini-3-flash-preview',
         config: {
-          systemInstruction: generateSystemInstruction(menu, posts, language) + (newYearMode ? "\n- CELEBRATE NEW YEAR'S EVE. Talk about the firework in Basel." : ""),
+          systemInstruction: generateSystemInstruction(menu, posts, language) + (newYearMode ? "\n- CELEBRATE NEW YEAR'S EVE. Mention the fireworks in Basel." : ""),
         }
       });
     }

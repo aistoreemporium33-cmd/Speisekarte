@@ -268,8 +268,8 @@ export default function App() {
                  <Star size={10} className={newYearMode ? 'fill-yellow-500' : ''} />
                </p>
                <div className="flex flex-col md:flex-row justify-center gap-6 text-red-300/60">
-                  <span className="flex items-center justify-center gap-2 hover:text-red-400 transition-colors"><MapPin size={16} /> Hochbergerstr. 160</span>
-                  <span className="flex items-center justify-center gap-2 hover:text-red-400 transition-colors"><Phone size={16} /> +41 61 631 31 31</span>
+                  <span className="flex items-center justify-center gap-2 hover:text-red-400 transition-colors"><MapPin size={16} /> Hochbergstrasse 180</span>
+                  <span className="flex items-center justify-center gap-2 hover:text-red-400 transition-colors"><Phone size={16} /> 0041763992434</span>
                </div>
                {newYearMode && (
                  <div className="mt-8 flex justify-center gap-4 text-yellow-500/40">
