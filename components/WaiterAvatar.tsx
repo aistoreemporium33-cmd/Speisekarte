@@ -4,61 +4,69 @@ import React from 'react';
 interface Props {
   className?: string;
   christmasMode?: boolean;
+  carnevalMode?: boolean;
 }
 
-export const WaiterAvatar: React.FC<Props> = ({ className = "w-10 h-10", christmasMode }) => {
+export const WaiterAvatar: React.FC<Props> = ({ className = "w-10 h-10", christmasMode, carnevalMode }) => {
   return (
     <svg viewBox="0 0 100 100" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
       <style>
         {`
-          @keyframes bowtie-wiggle {
+          @keyframes sora-blink {
+            0%, 90%, 100% { opacity: 1; }
+            95% { opacity: 0; }
+          }
+          @keyframes hair-sway {
             0%, 100% { transform: rotate(0deg); }
-            5% { transform: rotate(-5deg); }
-            10% { transform: rotate(5deg); }
-            15% { transform: rotate(-3deg); }
-            20% { transform: rotate(0deg); }
+            50% { transform: rotate(2deg); }
           }
-          .bowtie-anim {
-            transform-origin: 50px 38px;
-            animation: bowtie-wiggle 5s infinite ease-in-out;
-          }
+          .blink { animation: sora-blink 4s infinite; }
+          .hair { transform-origin: top; animation: hair-sway 3s infinite ease-in-out; }
         `}
       </style>
       
-      {/* Legs/Trousers - Black */}
-      <path d="M35 70 L35 95 Q35 98 38 98 L48 98 Q50 98 50 95 L50 75 L50 95 Q50 98 52 98 L62 98 Q65 98 65 95 L65 70 Z" fill="#1a1a1a" />
+      {/* Sora's Long Hair (Back) */}
+      <path d="M25 35 Q20 50 25 85 L75 85 Q80 50 75 35" fill="#3D2B1F" className="hair" />
       
-      {/* Shirt - White */}
-      <path d="M30 40 Q30 35 35 35 L65 35 Q70 35 70 40 L70 72 L30 72 Z" fill="#FFFFFF" />
+      {/* Body - Elegant Waitress Vest */}
+      <path d="M30 60 L30 95 Q30 98 33 98 L67 98 Q70 98 70 95 L70 60 Z" fill="#1a1a1a" />
+      <path d="M30 60 L50 98 L70 60 Z" fill="#2c2c2c" />
+      <path d="M40 60 L50 85 L60 60 Z" fill="#FFFFFF" />
       
-      {/* Buttons */}
-      <circle cx="50" cy="48" r="1.5" fill="#ddd" />
-      <circle cx="50" cy="56" r="1.5" fill="#ddd" />
-      <circle cx="50" cy="64" r="1.5" fill="#ddd" />
-
       {/* Head - Skin Tone */}
-      <circle cx="50" cy="22" r="14" fill="#FFDFC4" />
+      <circle cx="50" cy="35" r="18" fill="#FFDFC4" />
       
-      {/* Hair - Dark Brown/Black */}
-      <path d="M36 20 Q36 10 50 8 Q64 10 64 20 Q64 16 62 14 Q50 4 38 14 Q36 16 36 20" fill="#2c1810" />
+      {/* Sora's Hair (Front/Bangs) */}
+      <path d="M32 30 Q50 15 68 30 Q65 20 50 18 Q35 20 32 30" fill="#3D2B1F" />
+      
+      {/* Eyes with Blinking Effect (Hidden by mask in Carneval Mode) */}
+      {!carnevalMode && (
+        <g className="blink">
+          <circle cx="43" cy="35" r="2" fill="#1a1a1a" />
+          <circle cx="57" cy="35" r="2" fill="#1a1a1a" />
+        </g>
+      )}
+      
+      {/* Carneval Mask (Larve) */}
+      {carnevalMode && (
+        <g transform="translate(32, 25)">
+           <path d="M0 10 Q18 -5 36 10 L36 20 Q18 30 0 20 Z" fill="#ffffff" stroke="#ff9d00" strokeWidth="1" />
+           <path d="M5 12 Q9 9 13 12" fill="none" stroke="#000" strokeWidth="1" />
+           <path d="M23 12 Q27 9 31 12" fill="none" stroke="#000" strokeWidth="1" />
+           <circle cx="9" cy="15" r="2" fill="#000" />
+           <circle cx="27" cy="15" r="2" fill="#000" />
+           {/* Mask Decorations */}
+           <path d="M18 10 L18 18" stroke="#ff9d00" strokeWidth="0.5" />
+           <circle cx="18" cy="22" r="1.5" fill="#ff4d00" />
+        </g>
+      )}
 
-      {/* Eyes */}
-      <circle cx="45" cy="22" r="1.5" fill="#1a1a1a" />
-      <circle cx="55" cy="22" r="1.5" fill="#1a1a1a" />
-      
       {/* Smile */}
-      <path d="M46 28 Q50 31 54 28" stroke="#1a1a1a" strokeWidth="1" strokeLinecap="round" />
-
-      {/* Bow Tie - Blue/Red - Animated Group */}
-      <g className="bowtie-anim">
-        <path d="M44 38 L40 35 L40 41 Z" fill={christmasMode ? "#cc0000" : "#003399"} /> {/* Left wing */}
-        <path d="M56 38 L60 35 L60 41 Z" fill={christmasMode ? "#cc0000" : "#003399"} /> {/* Right wing */}
-        <circle cx="50" cy="38" r="2.5" fill={christmasMode ? "#cc0000" : "#003399"} /> {/* Knot */}
-      </g>
-
-      {/* Arms/Hands (Simple by side) */}
-      <path d="M30 42 Q25 55 28 65" stroke="#FFDFC4" strokeWidth="4" strokeLinecap="round" />
-      <path d="M70 42 Q75 55 72 65" stroke="#FFDFC4" strokeWidth="4" strokeLinecap="round" />
+      <path d="M45 44 Q50 48 55 44" stroke="#e07a7a" strokeWidth="1.5" strokeLinecap="round" />
+      
+      {/* Accessories */}
+      <circle cx="33" cy="40" r="2" stroke="#D4AF37" strokeWidth="1" fill="none" />
+      <circle cx="67" cy="40" r="2" stroke="#D4AF37" strokeWidth="1" fill="none" />
     </svg>
   );
 };

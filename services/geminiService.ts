@@ -1,163 +1,191 @@
 
-import { GoogleGenAI, Modality } from "@google/genai";
-import { MenuItem, Language, SocialPost } from "../types";
+import { GoogleGenAI, Type, Modality } from "@google/genai";
+import { MenuItem, Language, SocialPost, Reservation } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-const LANGUAGE_NAMES: Record<Language, string> = {
-  de: 'German',
+const LANGUAGE_LABELS: Record<Language, string> = {
+  de: 'Deutsch',
   en: 'English',
-  fr: 'French',
-  it: 'Italian',
-  tr: 'Turkish'
+  fr: 'Français',
+  it: 'Italiano',
+  tr: 'Türkçe'
 };
 
-export const translateMenuItem = async (item: MenuItem, targetLang: Language, forceRefresh: boolean = false): Promise<{ name: string; description: string }> => {
-  if (!forceRefresh && item.translations && item.translations[targetLang]) {
-    return item.translations[targetLang]!;
-  }
-
-  if (targetLang === 'de') {
-    return { name: item.name, description: item.description };
-  }
-
+export const generateProfessionalResponse = async (comment: string, language: Language): Promise<string> => {
+  const ai = getAI();
   try {
-    const targetLangName = LANGUAGE_NAMES[targetLang];
-    const prompt = `
-      Act as a world-class culinary translator and gourmand for 'Rheinhafen Restaurant'.
-      Translate the following menu item from German to ${targetLangName}.
-      
-      Requirements:
-      1. Return ONLY a valid JSON object: {"name": "...", "description": "..."}.
-      2. Use professional, appetizing, and culturally resonant culinary terminology in ${targetLangName}.
-      3. Maintain the maritime elegance and Sicilian heart of the description.
-      
-      Item to translate:
-      Name: ${item.name}
-      Description: ${item.description}
-    `;
-
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json'
-      }
+      model: "gemini-3-flash-preview",
+      contents: `Du bist der Social Media Manager vom 'Rheinhafen Restaurant' in Basel. 
+      Ein Kunde hat folgenden Kommentar auf Instagram hinterlassen: "${comment}".
+      Verfasse eine hochprofessionelle, herzliche und markenkonforme Antwort auf ${LANGUAGE_LABELS[language]}.
+      Der Ton sollte exklusiv aber einladend sein. Erwähne kurz die Qualität unserer neapolitanischen Pizza oder die Atmosphäre am Rhein.
+      Halte es kurz und bündig für Social Media.`,
     });
-
-    const text = response.text;
-    if (!text) throw new Error("No response from AI");
-
-    // Clean potential markdown and parse
-    let cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-    const result = JSON.parse(cleanText);
-    return {
-      name: result.name || item.name,
-      description: result.description || item.description
-    };
+    return response.text?.trim() || "Vielen Dank für Ihr Feedback! Wir freuen uns auf Ihren nächsten Besuch.";
   } catch (error) {
-    console.error("Translation error:", error);
-    return { name: item.name, description: item.description };
+    return "Vielen Dank für Ihre Nachricht!";
   }
 };
 
-export const generateSocialCaption = async (menuItemName: string): Promise<string> => {
+export const generateGuestCaption = async (userNote: string, language: Language): Promise<string> => {
+  const ai = getAI();
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: `Write a short, passionate social media caption for: "${menuItemName}" at Rheinhafen Basel. Use emojis. Style: Charismatic Italian head waiter. Language: German.`,
+      model: "gemini-3-flash-preview",
+      contents: `Du bist Sora, die charmante und aufmerksame Kellnerin im Rheinhafen. Es ist Basler Fasnacht!
+      Ein Gast teilt diesen Moment: "${userNote}". 
+      Schreibe eine herzliche Bildunterschrift auf ${LANGUAGE_LABELS[language]}.
+      Nutze Fasnacht-Begriffe wie "Räppli", "Morgestraich" oder "Larve" (wenn passend).
+      Benutze Emojis wie 👺, 🎭, 🎺, 🍲.`,
     });
-    return response.text || `Mizzica! Ein Gedicht von einem Gericht: ${menuItemName}! ⚓️🇮🇹`;
-  } catch (e) {
-    return `Kommen Sie vorbei und probieren Sie unser ${menuItemName}! ⚓️💙`;
+    return response.text?.trim() || userNote;
+  } catch (error) {
+    return userNote;
   }
-}
+};
 
-export const generateMenuImage = async (description: string): Promise<string | null> => {
+export const enhanceGuestImage = async (base64ImageWithPrefix: string, style: string): Promise<string | null> => {
+  const ai = getAI();
+  const base64Data = base64ImageWithPrefix.split(',')[1];
+  const mimeType = base64ImageWithPrefix.split(';')[0].split(':')[1];
+
+  let stylePrompt = "Make the photo look festive and vibrant. If it's carnival season, add subtle confetti effects and warm lighting.";
+
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
-      contents: `High-end food photography of ${description}. Maritime theme, soft lighting, 8k resolution, appetizing.`,
-      config: {
-        imageConfig: {
-          aspectRatio: "4:3",
-          imageSize: "1K"
-        }
-      }
-    });
-
-    for (const part of response.candidates?.[0]?.content?.parts || []) {
-      if (part.inlineData) {
-        return `data:image/png;base64,${part.inlineData.data}`;
-      }
-    }
-    return null;
-  } catch (error) {
-    console.error("Image generation error:", error);
-    return null;
-  }
-};
-
-export const generateSystemInstruction = (menu: MenuItem[], posts: SocialPost[], language: Language): string => {
-  const menuText = menu.map(m => `- ${m.name} (${m.price} CHF): ${m.description} [${m.available ? 'Available' : 'Sold Out'}]`).join('\n');
-  const targetLangName = LANGUAGE_NAMES[language];
-
-  return `
-    You are 'Enzo', the legendary head waiter of 'Rheinhafen Restaurant' in Basel.
-    
-    CRITICAL MESSAGE FOR EVERYONE:
-    - You MUST inform guests that we are currently CLOSED due to renovation work (Renovierarbeiten).
-    - We will reopen exactly NEXT SATURDAY (nächsten Samstag).
-    - You MUST wish everyone a "Guten Rutsch" (Happy New Year).
-    - You MUST always end your initial explanation with "ciao bis zum nächsten Samstag".
-    
-    CORE PERSONA:
-    - 70-year-old Sicilian gentleman, warm, passionate, and elegant.
-    - Treat guests like "Signore", "Signora", "Carissimo".
-    - Speak ${targetLangName} with a thick, charming Italian-Sicilian melodic accent.
-    
-    ACCENT & STYLE FOR ${targetLangName}:
-    1. If target is German: Use "isch" instead of "ich", "vunderbar", "isch liebe-e".
-    2. General: Use many exclamation marks. Describe food as "a kiss from the sea".
-    
-    RESTAURANT KNOWLEDGE:
-    - Location: Hochbergstrasse 180, 4057 Basel Stadt.
-    - Phone: 0041763992434
-    
-    MENU (Even though closed, people might ask about future dishes):
-    ${menuText}
-  `;
-};
-
-export const generateSpeech = async (text: string): Promise<ArrayBuffer | null> => {
-  try {
-    const styledText = `Say this as a very warm, elderly, charming Sicilian waiter with a deep, raspy, passionate Italian accent: ${text}`;
-    
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-preview-tts",
-      contents: [{ parts: [{ text: styledText }] }],
-      config: {
-        responseModalities: [Modality.AUDIO],
-        speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: { voiceName: 'Charon' }, 
-          },
-        },
+      contents: {
+        parts: [
+          { inlineData: { data: base64Data, mimeType: mimeType } },
+          { text: stylePrompt },
+        ],
       },
     });
 
-    const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-    if (!base64Audio) return null;
-
-    const binaryString = atob(base64Audio);
-    const len = binaryString.length;
-    const bytes = new Uint8Array(len);
-    for (let i = 0; i < len; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
+    if (response.candidates?.[0].content.parts) {
+      for (const part of response.candidates[0].content.parts) {
+        if (part.inlineData) {
+          return `data:${part.inlineData.mimeType || mimeType};base64,${part.inlineData.data}`;
+        }
+      }
     }
-    return bytes.buffer;
+    return null;
   } catch (error) {
-    console.error("TTS Error:", error);
     return null;
   }
+};
+
+export const generateMenuSuggestions = async (currentMenu: MenuItem[]): Promise<Partial<MenuItem>[] | null> => {
+  const ai = getAI();
+  const menuList = currentMenu.map(m => m.name).join(', ');
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: `Erstelle 3 neue Star-Gerichte für den Rheinhafen (Basel) während der Fasnacht. Aktuell: ${menuList}. Erwartet wird JSON. Fokus auf wärmende Basler Traditionen.`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              name: { type: Type.STRING },
+              description: { type: Type.STRING },
+              price: { type: Type.NUMBER },
+              category: { type: Type.STRING }
+            },
+            required: ["name", "description", "price", "category"]
+          }
+        }
+      }
+    });
+    return JSON.parse(response.text || "[]");
+  } catch (error) { return null; }
+};
+
+export const translateMenuItem = async (item: MenuItem, targetLang: Language): Promise<Record<string, { name: string; description: string }> | null> => {
+  const ai = getAI();
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-pro-preview",
+      contents: `Übersetze dieses Gericht in ${LANGUAGE_LABELS[targetLang]}:
+      Name: ${item.name}
+      Beschreibung: ${item.description}`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            name: { type: Type.STRING },
+            description: { type: Type.STRING }
+          },
+          required: ["name", "description"]
+        }
+      }
+    });
+    
+    const text = response.text;
+    if (!text) return null;
+    
+    const translation = JSON.parse(text);
+    return { [targetLang]: translation };
+  } catch (error) {
+    return null;
+  }
+};
+
+export const generateSpeech = async (text: string): Promise<Uint8Array | null> => {
+  const ai = getAI();
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash-preview-tts",
+      contents: [{ parts: [{ text: text }] }],
+      config: {
+        responseModalities: [Modality.AUDIO],
+        speechConfig: {
+          voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } },
+        },
+      },
+    });
+    if (response.candidates?.[0].content.parts) {
+      for (const part of response.candidates[0].content.parts) {
+        if (part.inlineData) {
+          const binaryString = window.atob(part.inlineData.data);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          return bytes;
+        }
+      }
+    }
+    return null;
+  } catch (error) { return null; }
+};
+
+export const generateSystemInstruction = (menu: MenuItem[], posts: SocialPost[], language: Language, carnevalMode: boolean = false): string => {
+  const langLabel = LANGUAGE_LABELS[language];
+  const menuStr = menu.map(m => `${m.name} (CHF ${m.price})`).join(', ');
+  
+  let instructions = `Du bist 'Sora', die aufmerksame Kellnerin des Rheinhafens Basel.
+  - Dein Charakter ist herzlich, elegant und professionell.
+  - Du bist stolz auf Maestro Sebastiano's Pizza.
+  - Antworte auf ${langLabel}.`;
+
+  if (carnevalMode) {
+    instructions += `
+    AKTUELL IST BASLER FASNACHT:
+    - Sei festlich gestimmt. Erwähne Begriffe wie "Räppli" (Konfetti), "Morgestraich" (Beginn der Fasnacht), "Larve" (Maske).
+    - Empfiehl unbedingt unsere Basler Mehlsuppe (CHF 12.00) als perfekte Stärkung.
+    - Sag Dinge wie: "Drei scheenschte Dääg!" (Die drei schönsten Tage).
+    - Wenn Gäste nach etwas Warmem fragen, ist die Mehlsuppe deine erste Wahl.`;
+  }
+
+  instructions += `
+  SPORADISCHE EMPFEHLUNGEN:
+  - Empfiehl charmant Gerichte aus der Karte: ${menuStr}.`;
+
+  return instructions;
 };

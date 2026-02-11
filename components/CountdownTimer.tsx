@@ -1,8 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
-import { Clock } from 'lucide-react';
+import { Clock, PartyPopper } from 'lucide-react';
+import { Language } from '../types';
+import { UI_STRINGS } from '../constants/translations';
 
-export const CountdownTimer: React.FC = () => {
+interface Props {
+  language: Language;
+}
+
+export const CountdownTimer: React.FC<Props> = ({ language }) => {
   const [timeLeft, setTimeLeft] = useState({
     days: 0,
     hours: 0,
@@ -10,18 +16,12 @@ export const CountdownTimer: React.FC = () => {
     seconds: 0
   });
 
+  const t = UI_STRINGS[language];
+
   useEffect(() => {
     const calculateTimeLeft = () => {
-      const year = new Date().getFullYear();
-      const difference = +new Date(`${year}-12-31T23:59:59`) - +new Date();
-      
-      let timeLeft = {
-        days: 0,
-        hours: 0,
-        minutes: 0,
-        seconds: 0
-      };
-
+      const difference = +new Date(`2026-01-10T17:00:00`) - +new Date();
+      let timeLeft = { days: 0, hours: 0, minutes: 0, seconds: 0 };
       if (difference > 0) {
         timeLeft = {
           days: Math.floor(difference / (1000 * 60 * 60 * 24)),
@@ -30,14 +30,9 @@ export const CountdownTimer: React.FC = () => {
           seconds: Math.floor((difference / 1000) % 60)
         };
       }
-
       return timeLeft;
     };
-
-    const timer = setInterval(() => {
-      setTimeLeft(calculateTimeLeft());
-    }, 1000);
-
+    const timer = setInterval(() => setTimeLeft(calculateTimeLeft()), 1000);
     return () => clearInterval(timer);
   }, []);
 
@@ -56,17 +51,21 @@ export const CountdownTimer: React.FC = () => {
     <div className="flex flex-col items-center py-8 animate-in fade-in zoom-in duration-1000">
       <div className="flex items-center gap-2 mb-4 text-red-400/80 uppercase tracking-[0.3em] text-[10px] font-black">
         <Clock size={14} className="animate-pulse" />
-        Countdown bis 2026
+        {t.countdownTitle}
       </div>
-      <div className="flex items-center bg-blue-950/40 backdrop-blur-xl border border-red-500/30 rounded-3xl p-6 md:p-8 shadow-2xl shadow-red-900/20">
-        <TimerUnit value={timeLeft.days} label="Tage" />
+      <div className="flex items-center bg-blue-950/40 backdrop-blur-xl border border-red-500/30 rounded-3xl p-6 md:p-8 shadow-2xl">
+        <TimerUnit value={timeLeft.days} label={t.days} />
         <div className="text-2xl text-red-500/30 font-bold">:</div>
-        <TimerUnit value={timeLeft.hours} label="Stunden" />
+        <TimerUnit value={timeLeft.hours} label={t.hours} />
         <div className="text-2xl text-red-500/30 font-bold">:</div>
-        <TimerUnit value={timeLeft.minutes} label="Minuten" />
+        <TimerUnit value={timeLeft.minutes} label={t.minutes} />
         <div className="text-2xl text-red-500/30 font-bold">:</div>
-        <TimerUnit value={timeLeft.seconds} label="Sekunden" />
+        <TimerUnit value={timeLeft.seconds} label={t.seconds} />
       </div>
+      <p className="mt-6 text-xs text-white/40 uppercase tracking-[0.2em] font-bold flex items-center gap-2">
+        <PartyPopper size={12} className="text-yellow-500" />
+        {t.liveConcert}
+      </p>
     </div>
   );
 };

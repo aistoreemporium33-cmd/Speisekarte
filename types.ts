@@ -1,5 +1,4 @@
 
-
 export type Language = 'de' | 'en' | 'fr' | 'it' | 'tr';
 
 export type Category = string;
@@ -11,16 +10,6 @@ export const DEFAULT_CATEGORIES: string[] = [
   'Getränke'
 ];
 
-export interface Reservation {
-  id: string;
-  name: string;
-  date: string;
-  time: string;
-  guests: number;
-  phone?: string;
-  notes?: string;
-}
-
 export interface MenuItem {
   id: string;
   name: string;
@@ -28,27 +17,48 @@ export interface MenuItem {
   price: number;
   category: Category;
   available: boolean;
-  image?: string;
-  // Cache translations to save API calls
-  translations?: {
-    [key in Language]?: {
-      name: string;
-      description: string;
-    }
-  };
+  image: string;
+  translations?: Record<string, { name: string; description: string }>;
 }
+
+export interface GuestPermissions {
+  readProfile: boolean;
+  postToFeed: boolean;
+  manageMedia: boolean;
+}
+
+export interface GuestUser {
+  id: string;
+  name: string;
+  instagramHandle?: string;
+  profilePicture?: string;
+  isActivated: boolean;
+  permissions: GuestPermissions;
+  isVIP?: boolean;
+}
+
+export interface Reservation {
+  id: string;
+  name: string;
+  email: string;
+  date: string;
+  time: string;
+  guests: number;
+  vipToken: string;
+  status: 'active' | 'checked-in' | 'cancelled';
+}
+
+export type PostStatus = 'pending' | 'approved' | 'rejected';
 
 export interface SocialPost {
   id: string;
-  platform: 'instagram' | 'facebook' | 'tiktok';
+  platform: 'instagram' | 'facebook' | 'tiktok' | 'whatsapp' | 'hafen_internal';
   content: string;
   date: string;
   image?: string;
-}
-
-export interface AppState {
-  menu: MenuItem[];
-  posts: SocialPost[];
-  userMode: 'customer' | 'staff';
-  language: Language;
+  isGuestPost?: boolean;
+  guestName?: string;
+  guestHandle?: string;
+  guestAvatar?: string;
+  status?: PostStatus;
 }

@@ -1,18 +1,11 @@
 
+import { GoogleGenAI, LiveServerMessage, Modality } from "@google/genai";
 import React, { useState, useEffect, useRef } from 'react';
-import { GoogleGenAI, Chat } from "@google/genai";
-import { X, Send, Mic, MicOff, Volume2, VolumeX, Loader2, Star, Sparkles } from 'lucide-react';
+import { X, Send, Mic, MicOff, Volume2, VolumeX, Loader2, Sparkles, Headphones } from 'lucide-react';
 import { MenuItem, SocialPost, Language } from '../types';
-import { generateSystemInstruction, generateSpeech } from '../services/geminiService';
+import { generateSystemInstruction } from '../services/geminiService';
 import { WaiterAvatar } from './WaiterAvatar';
-
-interface Props {
-  menu: MenuItem[];
-  posts: SocialPost[];
-  language: Language;
-  autoStart?: boolean;
-  newYearMode?: boolean;
-}
+import { UI_STRINGS } from '../constants/translations';
 
 interface Message {
   id: string;
@@ -21,158 +14,218 @@ interface Message {
   isStreaming?: boolean;
 }
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+interface Props {
+  menu: MenuItem[];
+  posts: SocialPost[];
+  language: Language;
+  autoStart?: boolean;
+  carnevalMode?: boolean;
+}
 
-async function decodeAudioData(audioData: ArrayBuffer): Promise<AudioBuffer> {
-  const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-  const dataView = new DataView(audioData);
-  const numSamples = audioData.byteLength / 2;
-  const buffer = audioContext.createBuffer(1, numSamples, 24000);
-  const channelData = buffer.getChannelData(0);
-  for (let i = 0; i < numSamples; i++) {
-     channelData[i] = dataView.getInt16(i * 2, true) / 32768.0;
+// Audio Utils as per Guidelines
+function decode(base64: string) {
+  const binaryString = atob(base64);
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
+function encode(bytes: Uint8Array) {
+  let binary = '';
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+async function decodeAudioData(
+  data: Uint8Array,
+  ctx: AudioContext,
+  sampleRate: number,
+  numChannels: number,
+): Promise<AudioBuffer> {
+  const dataInt16 = new Int16Array(data.buffer);
+  const frameCount = dataInt16.length / numChannels;
+  const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
+
+  for (let channel = 0; channel < numChannels; channel++) {
+    const channelData = buffer.getChannelData(channel);
+    for (let i = 0; i < frameCount; i++) {
+      channelData[i] = dataInt16[i * numChannels + channel] / 32768.0;
+    }
   }
   return buffer;
 }
 
-const getGreeting = (lang: Language, ny?: boolean): string => {
-    switch (lang) {
-        case 'de': return "Buongiorno! Isch bin Enzo. Wir haben bis zum nächsten Samstag Renovierarbeiten-e und wir wünschen alle ein guten rutsch! Ciao bis zum nächsten Samstag!";
-        case 'it': return "Buongiorno! Sono Enzo. Abbiamo lavori di ristrutturazione fino a sabato prossimo e auguriamo a tutti un felice anno nuovo! Ciao, a sabato prossimo!";
-        case 'fr': return "Bonjour! Je suis Enzo. Nous avons des travaux de rénovation jusqu'à samedi prochain et nous souhaitons à tous une bonne année ! Ciao, à samedi prochain !";
-        case 'tr': return "Merhaba! Ben Enzo. Gelecek Cumartesiye kadar tadilat işlerimiz var ve herkese iyi seneler diliyoruz! Ciao, gelecek Cumartesi görüşmek üzere!";
-        case 'en': return "Buongiorno! I am Enzo. We have renovation work until next Saturday and we wish everyone a happy New Year! Ciao, see you next Saturday!";
-        default: return "Buongiorno! We are renovating until next Saturday. Happy New Year! Ciao bis zum nächsten Samstag!";
-    }
-};
-
-const getPlaceholder = (lang: Language): string => {
-    switch (lang) {
-        case 'de': return "Frag Enzo nach der Eröffnung...";
-        case 'it': return "Chiedi a Enzo della riapertura...";
-        case 'fr': return "Demander à Enzo...";
-        case 'tr': return "Enzo'ya sor...";
-        case 'en': return "Ask Enzo about reopening...";
-        default: return "Message Enzo...";
-    }
-};
-
-export const ChatBot: React.FC<Props> = ({ menu, posts, language, autoStart = false, newYearMode }) => {
+export const ChatBot: React.FC<Props> = ({ menu, posts, language, autoStart = false, carnevalMode = false }) => {
+  const t = UI_STRINGS[language];
   const [isOpen, setIsOpen] = useState(false);
+  const [isLiveMode, setIsLiveMode] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSoundOn, setIsSoundOn] = useState(true);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
   
-  const chatSessionRef = useRef<Chat | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const currentSourceRef = useRef<AudioBufferSourceNode | null>(null);
-  const isSoundOnRef = useRef(isSoundOn);
-  const hasAutoGreetedRef = useRef(false);
-  const recognitionRef = useRef<any>(null);
+  // Transcription states
+  const [currentInputTranscription, setCurrentInputTranscription] = useState('');
+  const [currentOutputTranscription, setCurrentOutputTranscription] = useState('');
 
-  useEffect(() => { isSoundOnRef.current = isSoundOn; }, [isSoundOn]);
+  const chatSessionRef = useRef<any>(null); // For text chat
+  const liveSessionRef = useRef<any>(null); // For Live API
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Audio Refs
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const outputAudioContextRef = useRef<AudioContext | null>(null);
+  const micStreamRef = useRef<MediaStream | null>(null);
+  const nextStartTimeRef = useRef(0);
+  const activeSourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
 
   const initAudio = () => {
     if (!audioContextRef.current) {
-        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
+    }
+    if (!outputAudioContextRef.current) {
+        outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
     }
     if (audioContextRef.current.state === 'suspended') audioContextRef.current.resume();
+    if (outputAudioContextRef.current.state === 'suspended') outputAudioContextRef.current.resume();
   };
 
   useEffect(() => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = false;
-      recognitionRef.current.interimResults = false;
-      const langMap: Record<string, string> = { de: 'de-DE', it: 'it-IT', fr: 'fr-FR', tr: 'tr-TR', en: 'en-US' };
-      recognitionRef.current.lang = langMap[language] || 'de-DE';
-
-      recognitionRef.current.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        setInput(transcript);
-        setIsRecording(false);
-      };
-
-      recognitionRef.current.onerror = () => setIsRecording(false);
-      recognitionRef.current.onend = () => setIsRecording(false);
-    }
-  }, [language]);
-
-  const toggleRecording = () => {
-    if (!recognitionRef.current) {
-      alert("Spracherkennung wird nicht unterstützt.");
-      return;
-    }
-    if (isRecording) {
-      recognitionRef.current.stop();
-    } else {
-      initAudio();
-      try {
-        recognitionRef.current.start();
-        setIsRecording(true);
-      } catch (e) {
-        console.error("Failed to start recognition", e);
-      }
-    }
-  };
-
-  useEffect(() => {
-    if (autoStart && !hasAutoGreetedRef.current) {
-        initAudio();
-        setIsOpen(true);
-        setIsSoundOn(true);
-        hasAutoGreetedRef.current = true;
-        const greeting = getGreeting(language, newYearMode);
-        setMessages([{ id: 'init', role: 'model', text: greeting }]);
-        setTimeout(() => playResponseAudio(greeting), 200);
-    }
-  }, [autoStart, language, newYearMode]);
-
-  useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !isLiveMode) {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       chatSessionRef.current = ai.chats.create({
         model: 'gemini-3-flash-preview',
         config: {
-          systemInstruction: generateSystemInstruction(menu, posts, language) + (newYearMode ? "\n- CELEBRATE NEW YEAR'S EVE. Mention the fireworks in Basel." : ""),
+          systemInstruction: generateSystemInstruction(menu, posts, language, carnevalMode),
         }
       });
     }
-  }, [isOpen, menu, posts, language, newYearMode]);
+  }, [isOpen, isLiveMode, menu, posts, language, carnevalMode]);
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
-  const playResponseAudio = async (text: string) => {
-    if (!isSoundOnRef.current) return;
-    try {
-        if (currentSourceRef.current) { currentSourceRef.current.stop(); }
-        setIsSpeaking(true);
-        initAudio();
-        const audioData = await generateSpeech(text);
-        if (audioData && audioContextRef.current) {
-            const buffer = await decodeAudioData(audioData);
-            const source = audioContextRef.current.createBufferSource();
+  const toggleLiveMode = async () => {
+    if (isLiveMode) {
+      // Close Live Mode
+      if (liveSessionRef.current) liveSessionRef.current.close();
+      if (micStreamRef.current) micStreamRef.current.getTracks().forEach(t => t.stop());
+      setIsLiveMode(false);
+      setIsSpeaking(false);
+      return;
+    }
+
+    initAudio();
+    setIsLiveMode(true);
+    setCurrentInputTranscription('');
+    setCurrentOutputTranscription('');
+
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    micStreamRef.current = stream;
+
+    const sessionPromise = ai.live.connect({
+      model: 'gemini-2.5-flash-native-audio-preview-12-2025',
+      callbacks: {
+        onopen: () => {
+          const source = audioContextRef.current!.createMediaStreamSource(stream);
+          const scriptProcessor = audioContextRef.current!.createScriptProcessor(4096, 1, 1);
+          
+          scriptProcessor.onaudioprocess = (e) => {
+            const inputData = e.inputBuffer.getChannelData(0);
+            const l = inputData.length;
+            const int16 = new Int16Array(l);
+            for (let i = 0; i < l; i++) {
+              int16[i] = inputData[i] * 32768;
+            }
+            const pcmBlob = {
+              data: encode(new Uint8Array(int16.buffer)),
+              mimeType: 'audio/pcm;rate=16000',
+            };
+            sessionPromise.then(session => session.sendRealtimeInput({ media: pcmBlob }));
+          };
+
+          source.connect(scriptProcessor);
+          scriptProcessor.connect(audioContextRef.current!.destination);
+          liveSessionRef.current = { stopMic: () => { source.disconnect(); scriptProcessor.disconnect(); } };
+        },
+        onmessage: async (message: LiveServerMessage) => {
+          // Handle Audio
+          const audioBase64 = message.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
+          if (audioBase64 && isSoundOn) {
+            setIsSpeaking(true);
+            const ctx = outputAudioContextRef.current!;
+            nextStartTimeRef.current = Math.max(nextStartTimeRef.current, ctx.currentTime);
+            
+            const buffer = await decodeAudioData(decode(audioBase64), ctx, 24000, 1);
+            const source = ctx.createBufferSource();
             source.buffer = buffer;
-            source.connect(audioContextRef.current.destination);
-            source.onended = () => { setIsSpeaking(false); currentSourceRef.current = null; };
-            currentSourceRef.current = source;
-            source.start(0);
-        } else { setIsSpeaking(false); }
-    } catch (e) { setIsSpeaking(false); }
+            source.connect(ctx.destination);
+            
+            source.onended = () => {
+              activeSourcesRef.current.delete(source);
+              if (activeSourcesRef.current.size === 0) setIsSpeaking(false);
+            };
+
+            source.start(nextStartTimeRef.current);
+            nextStartTimeRef.current += buffer.duration;
+            activeSourcesRef.current.add(source);
+          }
+
+          // Handle Interruptions
+          if (message.serverContent?.interrupted) {
+            activeSourcesRef.current.forEach(s => s.stop());
+            activeSourcesRef.current.clear();
+            nextStartTimeRef.current = 0;
+            setIsSpeaking(false);
+          }
+
+          // Handle Transcriptions
+          if (message.serverContent?.inputTranscription) {
+            setCurrentInputTranscription(prev => prev + message.serverContent!.inputTranscription!.text);
+          }
+          if (message.serverContent?.outputTranscription) {
+            setCurrentOutputTranscription(prev => prev + message.serverContent!.outputTranscription!.text);
+          }
+
+          if (message.serverContent?.turnComplete) {
+            setMessages(prev => [
+              ...prev,
+              { id: `in-${Date.now()}`, role: 'user', text: currentInputTranscription },
+              { id: `out-${Date.now()}`, role: 'model', text: currentOutputTranscription }
+            ]);
+            setCurrentInputTranscription('');
+            setCurrentOutputTranscription('');
+          }
+        },
+        onerror: (e) => console.error("Live Error:", e),
+        onclose: () => setIsLiveMode(false)
+      },
+      config: {
+        responseModalities: [Modality.AUDIO],
+        inputAudioTranscription: {},
+        outputAudioTranscription: {},
+        speechConfig: {
+          voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } }
+        },
+        systemInstruction: generateSystemInstruction(menu, posts, language, carnevalMode) + 
+          "\nDU BIST EIN MULTILINGUALER TRANSLATOR: Wenn der Gast in einer anderen Sprache spricht, antworte entweder in dieser Sprache oder übersetze charmant. Erkenne die Sprache sofort."
+      }
+    });
   };
 
   const handleSend = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    const text = input.trim();
-    if (!text || !chatSessionRef.current || isLoading) return;
+    if (!input.trim() || !chatSessionRef.current || isLoading) return;
     
-    initAudio();
-    const userMsg = { id: Date.now().toString(), role: 'user' as const, text };
-    setMessages(prev => [...prev, userMsg]);
+    const text = input.trim();
+    setMessages(prev => [...prev, { id: Date.now().toString(), role: 'user', text }]);
     setInput('');
     setIsLoading(true);
 
@@ -183,13 +236,13 @@ export const ChatBot: React.FC<Props> = ({ menu, posts, language, autoStart = fa
 
       const stream = await chatSessionRef.current.sendMessageStream({ message: text });
       for await (const chunk of stream) {
-          fullText += (chunk.text || "");
+          const c = chunk as any;
+          fullText += (c.text || "");
           setMessages(prev => prev.map(m => m.id === tempId ? { ...m, text: fullText } : m));
       }
       setMessages(prev => prev.map(m => m.id === tempId ? { ...m, isStreaming: false } : m));
-      playResponseAudio(fullText);
     } catch (error) {
-      setMessages(prev => [...prev, { id: 'err', role: 'model', text: "Scusi, wir haben ein technisches Problem-e." }]);
+      setMessages(prev => [...prev, { id: 'err', role: 'model', text: t.pasqualeError }]);
     } finally { setIsLoading(false); }
   };
 
@@ -197,79 +250,98 @@ export const ChatBot: React.FC<Props> = ({ menu, posts, language, autoStart = fa
     return (
       <button 
         onClick={() => { initAudio(); setIsOpen(true); }} 
-        className={`fixed bottom-6 right-6 w-16 h-16 rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-all z-50 border-4 overflow-hidden ${newYearMode ? 'bg-[#d4af37] border-white' : 'bg-[#003399] border-red-500'}`}
+        className={`fixed bottom-6 right-6 w-16 h-16 rounded-full ${carnevalMode ? 'bg-orange-600' : 'bg-blue-700'} shadow-2xl flex items-center justify-center hover:scale-110 transition-all z-50 border-2 border-white/20`}
       >
-        <div className="relative">
-          <WaiterAvatar className="w-12 h-12" christmasMode={newYearMode} />
-          {newYearMode && <div className="absolute -top-2 -right-2 animate-pulse"><Sparkles size={20} className="text-white fill-yellow-200" /></div>}
+        <WaiterAvatar className="w-12 h-12" carnevalMode={carnevalMode} />
+        <div className="absolute -top-1 -right-1 animate-pulse">
+           <Sparkles size={16} className="text-yellow-400" />
         </div>
       </button>
     );
   }
 
   return (
-    <div className={`fixed bottom-6 right-6 w-[90vw] md:w-96 h-[500px] bg-[#001C30] rounded-2xl shadow-2xl flex flex-col z-50 overflow-hidden border-2 ${newYearMode ? 'border-yellow-500/50 shadow-yellow-500/10' : 'border-red-500/50'} animate-in slide-in-from-bottom-10`}>
-      <div className={`${newYearMode ? 'bg-[#d4af37]' : 'bg-[#003399]'} p-4 flex justify-between items-center ${newYearMode ? 'text-blue-900' : 'text-red-500'} border-b ${newYearMode ? 'border-yellow-600/30' : 'border-red-500/30'}`}>
+    <div className={`fixed bottom-6 right-6 w-[95vw] md:w-96 h-[600px] bg-[#001C30] rounded-[2.5rem] shadow-2xl flex flex-col z-50 overflow-hidden border ${carnevalMode ? 'border-orange-500/30' : 'border-blue-500/30'} animate-in slide-in-from-bottom-4`}>
+      <div className={`${carnevalMode ? 'bg-orange-600' : 'bg-blue-700'} p-5 flex justify-between items-center text-white shrink-0 shadow-lg`}>
         <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-full bg-blue-900 flex items-center justify-center overflow-hidden border-2 ${isSpeaking ? 'border-white animate-pulse' : 'border-white/30'}`}>
-                <WaiterAvatar className="w-8 h-8 mt-1" christmasMode={newYearMode} />
-            </div>
-            <div>
-              <h3 className="font-bold text-sm flex items-center gap-1">
-                Enzo {newYearMode && <span className="text-yellow-100">🍾</span>}
-              </h3>
-              <span className={`text-[10px] uppercase tracking-tighter ${newYearMode ? 'text-blue-800' : 'text-red-200'}`}>
-                {newYearMode ? 'Gala Sommelier' : 'Ihre Begleitung'}
-              </span>
-            </div>
+          <div className={`relative w-12 h-12 rounded-full ${carnevalMode ? 'bg-orange-900' : 'bg-blue-900'} flex items-center justify-center border-2 transition-all ${isSpeaking || isLiveMode ? 'border-white scale-110' : 'border-white/20'}`}>
+            <WaiterAvatar className="w-9 h-9 mt-1" carnevalMode={carnevalMode} />
+            {(isSpeaking || isLiveMode) && (
+               <div className={`absolute inset-0 rounded-full border-2 ${carnevalMode ? 'border-orange-400' : 'border-blue-400'} animate-ping opacity-20`} />
+            )}
+          </div>
+          <div>
+            <h3 className="font-black text-xs uppercase tracking-widest">Sora</h3>
+            <span className="text-[9px] opacity-70 uppercase font-bold">{isLiveMode ? 'Live Translator' : (carnevalMode ? 'Fasnacht-Host' : 'Gastgeberin')}</span>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-            <button onClick={() => setIsSoundOn(!isSoundOn)} className={`p-2 rounded-full border transition-all ${isSoundOn ? (newYearMode ? 'bg-blue-900/10 text-blue-900 border-blue-900/30' : 'bg-red-500/20 text-red-100 border-red-500/50') : (newYearMode ? 'text-blue-900/40 border-transparent' : 'text-red-500/40 border-transparent')}`}>
-                {isSoundOn ? <Volume2 size={18} /> : <VolumeX size={18} />}
-            </button>
-            <button onClick={() => setIsOpen(false)} className={`p-2 rounded-full hover:bg-black/10 ${newYearMode ? 'text-blue-900' : 'text-red-500'}`}><X size={20} /></button>
+        <div className="flex items-center gap-1">
+          <button onClick={() => setIsSoundOn(!isSoundOn)} className="p-2 hover:bg-white/10 rounded-full transition-colors">{isSoundOn ? <Volume2 size={18} /> : <VolumeX size={18} />}</button>
+          <button onClick={() => setIsOpen(false)} className="p-2 hover:bg-white/10 rounded-full transition-colors"><X size={18} /></button>
         </div>
       </div>
-      <div className={`flex-1 overflow-y-auto p-4 space-y-4 bg-[#001C30]/95`}>
+      
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-blue-950/20 to-transparent custom-scrollbar">
         {messages.map((msg) => (
-            <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[85%] p-3 rounded-2xl text-sm shadow-md ${
-                    msg.role === 'user' 
-                      ? (newYearMode ? 'bg-blue-800 text-white border-blue-600' : 'bg-red-600 text-white border-red-500') + ' rounded-tr-none border'
-                      : (newYearMode ? 'bg-gradient-to-br from-yellow-100 to-white text-blue-900 border-yellow-400' : 'bg-blue-900 text-red-100 border-red-500/30') + ' rounded-tl-none border'
-                }`}>
-                    {msg.text || (msg.isStreaming && <Loader2 size={12} className={`animate-spin ${newYearMode ? 'text-blue-900' : 'text-red-500'}`} />)}
+            <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-2`}>
+                <div className={`max-w-[85%] p-4 rounded-2xl text-[13px] leading-relaxed ${msg.role === 'user' ? (carnevalMode ? 'bg-orange-600 text-white rounded-tr-none' : 'bg-blue-600 text-white rounded-tr-none') : 'bg-blue-900/40 text-white/90 border border-white/5 rounded-tl-none shadow-sm'}`}>
+                    {msg.text || (msg.isStreaming && <Loader2 size={14} className="animate-spin" />)}
                 </div>
             </div>
         ))}
+        {isLiveMode && (currentInputTranscription || currentOutputTranscription) && (
+           <div className="space-y-4 border-t border-white/5 pt-4">
+              {currentInputTranscription && (
+                <div className="flex justify-end">
+                   <div className="bg-white/5 border border-white/10 p-3 rounded-2xl rounded-tr-none text-[11px] text-white/60 italic">
+                      {currentInputTranscription}
+                   </div>
+                </div>
+              )}
+              {currentOutputTranscription && (
+                <div className="flex justify-start">
+                   <div className="bg-blue-500/10 border border-blue-500/20 p-3 rounded-2xl rounded-tl-none text-[11px] text-blue-300">
+                      {currentOutputTranscription}
+                   </div>
+                </div>
+              )}
+           </div>
+        )}
         <div ref={messagesEndRef} />
       </div>
-      <form onSubmit={handleSend} className={`p-3 bg-[#001C30] border-t ${newYearMode ? 'border-yellow-500/20' : 'border-red-500/30'} flex items-center gap-2`}>
-        <input 
-          type="text" 
-          value={input} 
-          onChange={(e) => setInput(e.target.value)} 
-          placeholder={getPlaceholder(language)} 
-          className={`flex-1 bg-blue-900/50 border rounded-full px-4 py-2.5 text-sm text-white outline-none transition-all placeholder:text-blue-300/40 ${newYearMode ? 'border-yellow-500/30 focus:border-yellow-500 shadow-[0_0_15px_rgba(212,175,55,0.1)]' : 'border-red-500/30 focus:border-red-500'}`} 
-          disabled={isLoading}
-          autoFocus
-        />
-        <button 
-          type="button"
-          onClick={toggleRecording}
-          title="Sprachsteuerung"
-          className={`p-2.5 rounded-full transition-all shadow-lg ${isRecording ? 'bg-red-500 text-white animate-pulse' : (newYearMode ? 'bg-blue-900 text-yellow-500 hover:bg-blue-800 border border-yellow-500/20' : 'bg-blue-900 text-red-400 hover:bg-blue-800 border border-red-500/20')}`}
-        >
-          {isRecording ? <MicOff size={18} /> : <Mic size={18} />}
-        </button>
-        <button 
-          type="submit" 
-          disabled={!input.trim() || isLoading} 
-          className={`p-2.5 ${newYearMode ? 'bg-gradient-to-br from-yellow-600 to-yellow-700 hover:from-yellow-500 hover:to-yellow-600' : 'bg-red-600 hover:bg-red-500'} text-white rounded-full transition-all shadow-lg disabled:opacity-50 disabled:grayscale flex items-center justify-center min-w-[42px]`}
-        >
-          {isLoading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
-        </button>
-      </form>
+
+      <div className="p-4 bg-blue-950/40 border-t border-white/5 flex flex-col gap-4">
+        {isLiveMode ? (
+           <div className="flex items-center justify-between bg-blue-900/30 p-4 rounded-2xl border border-blue-500/20 animate-pulse">
+              <div className="flex items-center gap-3">
+                 <div className="w-2 h-2 bg-red-500 rounded-full animate-ping" />
+                 <span className="text-[10px] font-black uppercase text-white/60 tracking-widest">Live Listening...</span>
+              </div>
+              <button onClick={toggleLiveMode} className="bg-red-600 p-3 rounded-xl text-white hover:bg-red-500 transition-colors">
+                 <MicOff size={20} />
+              </button>
+           </div>
+        ) : (
+          <form onSubmit={handleSend} className="flex gap-2">
+            <button type="button" onClick={toggleLiveMode} className={`p-4 rounded-xl border ${carnevalMode ? 'border-orange-500/20 hover:bg-orange-500/10' : 'border-blue-500/20 hover:bg-blue-500/10'} text-white transition-all`}>
+              <Mic size={20} className={carnevalMode ? 'text-orange-400' : 'text-blue-400'} />
+            </button>
+            <input 
+              type="text" 
+              value={input} 
+              onChange={(e) => setInput(e.target.value)} 
+              placeholder={t.pasqualePlaceholder} 
+              className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-blue-500 transition-all placeholder:text-white/20" 
+            />
+            <button type="submit" disabled={!input.trim() || isLoading} className={`${carnevalMode ? 'bg-orange-600' : 'bg-blue-700'} p-3 rounded-xl text-white disabled:opacity-50 transition-colors shadow-lg`}>
+              <Send size={18} />
+            </button>
+          </form>
+        )}
+        <div className="flex justify-center">
+           <p className="text-[8px] font-black uppercase tracking-widest text-white/10 italic">Power by Gemini 2.5 Flash Native Audio</p>
+        </div>
+      </div>
     </div>
   );
 };
