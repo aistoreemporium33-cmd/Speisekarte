@@ -1,7 +1,7 @@
 
 import { GoogleGenAI, LiveServerMessage, Modality } from "@google/genai";
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Send, Mic, MicOff, Volume2, VolumeX, Loader2, Sparkles, Headphones } from 'lucide-react';
+import { X, Send, Mic, MicOff, Volume2, VolumeX, Loader2, Sparkles } from 'lucide-react';
 import { MenuItem, SocialPost, Language } from '../types';
 import { generateSystemInstruction } from '../services/geminiService';
 import { WaiterAvatar } from './WaiterAvatar';
@@ -22,7 +22,7 @@ interface Props {
   carnevalMode?: boolean;
 }
 
-// Audio Utils as per Guidelines
+// Audio Utils for PCM Data Handling
 function decode(base64: string) {
   const binaryString = atob(base64);
   const len = binaryString.length;
@@ -71,15 +71,13 @@ export const ChatBot: React.FC<Props> = ({ menu, posts, language, autoStart = fa
   const [isSoundOn, setIsSoundOn] = useState(true);
   const [isSpeaking, setIsSpeaking] = useState(false);
   
-  // Transcription states
   const [currentInputTranscription, setCurrentInputTranscription] = useState('');
   const [currentOutputTranscription, setCurrentOutputTranscription] = useState('');
 
-  const chatSessionRef = useRef<any>(null); // For text chat
-  const liveSessionRef = useRef<any>(null); // For Live API
+  const chatSessionRef = useRef<any>(null);
+  const liveSessionRef = useRef<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  // Audio Refs
   const audioContextRef = useRef<AudioContext | null>(null);
   const outputAudioContextRef = useRef<AudioContext | null>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
@@ -113,8 +111,7 @@ export const ChatBot: React.FC<Props> = ({ menu, posts, language, autoStart = fa
 
   const toggleLiveMode = async () => {
     if (isLiveMode) {
-      // Close Live Mode
-      if (liveSessionRef.current) liveSessionRef.current.close();
+      if (liveSessionRef.current?.close) liveSessionRef.current.close();
       if (micStreamRef.current) micStreamRef.current.getTracks().forEach(t => t.stop());
       setIsLiveMode(false);
       setIsSpeaking(false);
@@ -139,9 +136,8 @@ export const ChatBot: React.FC<Props> = ({ menu, posts, language, autoStart = fa
           
           scriptProcessor.onaudioprocess = (e) => {
             const inputData = e.inputBuffer.getChannelData(0);
-            const l = inputData.length;
-            const int16 = new Int16Array(l);
-            for (let i = 0; i < l; i++) {
+            const int16 = new Int16Array(inputData.length);
+            for (let i = 0; i < inputData.length; i++) {
               int16[i] = inputData[i] * 32768;
             }
             const pcmBlob = {
@@ -153,10 +149,18 @@ export const ChatBot: React.FC<Props> = ({ menu, posts, language, autoStart = fa
 
           source.connect(scriptProcessor);
           scriptProcessor.connect(audioContextRef.current!.destination);
-          liveSessionRef.current = { stopMic: () => { source.disconnect(); scriptProcessor.disconnect(); } };
+          
+          sessionPromise.then(session => {
+             liveSessionRef.current = { 
+               close: () => {
+                 session.close();
+                 source.disconnect();
+                 scriptProcessor.disconnect();
+               }
+             };
+          });
         },
         onmessage: async (message: LiveServerMessage) => {
-          // Handle Audio
           const audioBase64 = message.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
           if (audioBase64 && isSoundOn) {
             setIsSpeaking(true);
@@ -178,15 +182,13 @@ export const ChatBot: React.FC<Props> = ({ menu, posts, language, autoStart = fa
             activeSourcesRef.current.add(source);
           }
 
-          // Handle Interruptions
           if (message.serverContent?.interrupted) {
-            activeSourcesRef.current.forEach(s => s.stop());
+            activeSourcesRef.current.forEach(s => { try { s.stop(); } catch(e){} });
             activeSourcesRef.current.clear();
             nextStartTimeRef.current = 0;
             setIsSpeaking(false);
           }
 
-          // Handle Transcriptions
           if (message.serverContent?.inputTranscription) {
             setCurrentInputTranscription(prev => prev + message.serverContent!.inputTranscription!.text);
           }
@@ -195,11 +197,13 @@ export const ChatBot: React.FC<Props> = ({ menu, posts, language, autoStart = fa
           }
 
           if (message.serverContent?.turnComplete) {
-            setMessages(prev => [
-              ...prev,
-              { id: `in-${Date.now()}`, role: 'user', text: currentInputTranscription },
-              { id: `out-${Date.now()}`, role: 'model', text: currentOutputTranscription }
-            ]);
+            if (currentInputTranscription || currentOutputTranscription) {
+              setMessages(prev => [
+                ...prev,
+                { id: `in-${Date.now()}`, role: 'user', text: currentInputTranscription || "..." },
+                { id: `out-${Date.now()}`, role: 'model', text: currentOutputTranscription || "..." }
+              ]);
+            }
             setCurrentInputTranscription('');
             setCurrentOutputTranscription('');
           }
@@ -214,8 +218,7 @@ export const ChatBot: React.FC<Props> = ({ menu, posts, language, autoStart = fa
         speechConfig: {
           voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } }
         },
-        systemInstruction: generateSystemInstruction(menu, posts, language, carnevalMode) + 
-          "\nDU BIST EIN MULTILINGUALER TRANSLATOR: Wenn der Gast in einer anderen Sprache spricht, antworte entweder in dieser Sprache oder übersetze charmant. Erkenne die Sprache sofort."
+        systemInstruction: generateSystemInstruction(menu, posts, language, carnevalMode)
       }
     });
   };

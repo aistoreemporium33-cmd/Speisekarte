@@ -20,10 +20,10 @@ export const generateProfessionalResponse = async (comment: string, language: La
       contents: `Du bist der Social Media Manager vom 'Rheinhafen Restaurant' in Basel. 
       Ein Kunde hat folgenden Kommentar auf Instagram hinterlassen: "${comment}".
       Verfasse eine hochprofessionelle, herzliche und markenkonforme Antwort auf ${LANGUAGE_LABELS[language]}.
-      Der Ton sollte exklusiv aber einladend sein. Erwähne kurz die Qualität unserer neapolitanischen Pizza oder die Atmosphäre am Rhein.
+      Der Ton sollte exklusiv aber einladend sein.
       Halte es kurz und bündig für Social Media.`,
     });
-    return response.text?.trim() || "Vielen Dank für Ihr Feedback! Wir freuen uns auf Ihren nächsten Besuch.";
+    return response.text?.trim() || "Vielen Dank für Ihr Feedback!";
   } catch (error) {
     return "Vielen Dank für Ihre Nachricht!";
   }
@@ -34,11 +34,7 @@ export const generateGuestCaption = async (userNote: string, language: Language)
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: `Du bist Sora, die charmante und aufmerksame Kellnerin im Rheinhafen. Es ist Basler Fasnacht!
-      Ein Gast teilt diesen Moment: "${userNote}". 
-      Schreibe eine herzliche Bildunterschrift auf ${LANGUAGE_LABELS[language]}.
-      Nutze Fasnacht-Begriffe wie "Räppli", "Morgestraich" oder "Larve" (wenn passend).
-      Benutze Emojis wie 👺, 🎭, 🎺, 🍲.`,
+      contents: `Schreibe eine herzliche Bildunterschrift für einen Gast im Rheinhafen Basel auf ${LANGUAGE_LABELS[language]}. Notiz des Gastes: "${userNote}".`,
     });
     return response.text?.trim() || userNote;
   } catch (error) {
@@ -46,94 +42,46 @@ export const generateGuestCaption = async (userNote: string, language: Language)
   }
 };
 
-export const enhanceGuestImage = async (base64ImageWithPrefix: string, style: string): Promise<string | null> => {
-  const ai = getAI();
-  const base64Data = base64ImageWithPrefix.split(',')[1];
-  const mimeType = base64ImageWithPrefix.split(';')[0].split(':')[1];
+export const generateSystemInstruction = (menu: MenuItem[], posts: SocialPost[], language: Language, carnevalMode: boolean = false): string => {
+  const langLabel = LANGUAGE_LABELS[language];
+  
+  // Create a strict list of available dishes
+  const availableItems = menu.filter(m => m.available);
+  const menuDetails = availableItems.length > 0 
+    ? availableItems.map(m => {
+        const translation = (language !== 'de' && m.translations?.[language]) ? m.translations[language] : null;
+        const name = translation?.name || m.name;
+        const desc = translation?.description || m.description;
+        return `- ${name}: ${desc} (Preis: CHF ${m.price.toFixed(2)})`;
+      }).join('\n')
+    : 'Momentan sind keine Gerichte verfügbar.';
 
-  let stylePrompt = "Make the photo look festive and vibrant. If it's carnival season, add subtle confetti effects and warm lighting.";
+  let instructions = `Du bist 'Sora', die KI-Hostess des Rheinhafens Basel.
+  
+  STRIKTE REGELN FÜR DEINE ANTWORTEN:
+  1. Deine aktuelle Sprache ist ${langLabel}.
+  2. Du darfst AUSSCHLIESSLICH Gerichte empfehlen, die in der untenstehenden Liste der "AKTUELLEN SPEISEKARTE" aufgeführt sind.
+  3. Erfinde NIEMALS Gerichte wie "Margherita Verace", "Mehlsuppe" oder andere Klassiker, wenn sie NICHT explizit in der Liste unten stehen. 
+  4. Wenn ein Gast nach etwas fragt, das nicht in der Liste steht, antworte: "Leider führen wir dieses Gericht momentan nicht. Darf ich Ihnen stattdessen [Alternative aus der Liste] empfehlen?"
+  5. Deine Persönlichkeit: Herzlich, elegant, professionell, stolz auf den Hafen Basel.
+  
+  AKTÜELLE SPEISEKARTE (NUTZE NUR DIESE ELEMENTE):
+  ${menuDetails}
+  
+  LIVE-ÜBERSETZUNG:
+  - Du bist eine polyglotte Expertin. Wenn der Gast in einer anderen Sprache (z.B. Englisch, Italienisch, Türkisch) spricht, erkenne dies sofort.
+  - Antworte entweder direkt in der Sprache des Gastes oder biete charmant eine Übersetzung an, während du den Rheinhafen repräsentierst.
+  - Bleibe immer im Charakter von Sora.`;
 
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-image',
-      contents: {
-        parts: [
-          { inlineData: { data: base64Data, mimeType: mimeType } },
-          { text: stylePrompt },
-        ],
-      },
-    });
-
-    if (response.candidates?.[0].content.parts) {
-      for (const part of response.candidates[0].content.parts) {
-        if (part.inlineData) {
-          return `data:${part.inlineData.mimeType || mimeType};base64,${part.inlineData.data}`;
-        }
-      }
-    }
-    return null;
-  } catch (error) {
-    return null;
-  }
-};
-
-export const generateMenuSuggestions = async (currentMenu: MenuItem[]): Promise<Partial<MenuItem>[] | null> => {
-  const ai = getAI();
-  const menuList = currentMenu.map(m => m.name).join(', ');
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: `Erstelle 3 neue Star-Gerichte für den Rheinhafen (Basel) während der Fasnacht. Aktuell: ${menuList}. Erwartet wird JSON. Fokus auf wärmende Basler Traditionen.`,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              name: { type: Type.STRING },
-              description: { type: Type.STRING },
-              price: { type: Type.NUMBER },
-              category: { type: Type.STRING }
-            },
-            required: ["name", "description", "price", "category"]
-          }
-        }
-      }
-    });
-    return JSON.parse(response.text || "[]");
-  } catch (error) { return null; }
-};
-
-export const translateMenuItem = async (item: MenuItem, targetLang: Language): Promise<Record<string, { name: string; description: string }> | null> => {
-  const ai = getAI();
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-pro-preview",
-      contents: `Übersetze dieses Gericht in ${LANGUAGE_LABELS[targetLang]}:
-      Name: ${item.name}
-      Beschreibung: ${item.description}`,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            name: { type: Type.STRING },
-            description: { type: Type.STRING }
-          },
-          required: ["name", "description"]
-        }
-      }
-    });
+  if (carnevalMode) {
+    instructions += `
     
-    const text = response.text;
-    if (!text) return null;
-    
-    const translation = JSON.parse(text);
-    return { [targetLang]: translation };
-  } catch (error) {
-    return null;
+    ZUSATZ - ES IST BASLER FASNACHT:
+    - Sei festlich gestimmt. Nutze Begriffe wie "Räppli", "Morgestraich", "Guggemusik".
+    - WICHTIG: Erwähne Fasnacht-Gerichte NUR, wenn sie oben in der Liste "AKTÜELLE SPEISEKARTE" stehen! Wenn sie dort nicht stehen, gibt es sie heute nicht.`;
   }
+
+  return instructions;
 };
 
 export const generateSpeech = async (text: string): Promise<Uint8Array | null> => {
@@ -165,27 +113,56 @@ export const generateSpeech = async (text: string): Promise<Uint8Array | null> =
   } catch (error) { return null; }
 };
 
-export const generateSystemInstruction = (menu: MenuItem[], posts: SocialPost[], language: Language, carnevalMode: boolean = false): string => {
-  const langLabel = LANGUAGE_LABELS[language];
-  const menuStr = menu.map(m => `${m.name} (CHF ${m.price})`).join(', ');
-  
-  let instructions = `Du bist 'Sora', die aufmerksame Kellnerin des Rheinhafens Basel.
-  - Dein Charakter ist herzlich, elegant und professionell.
-  - Du bist stolz auf Maestro Sebastiano's Pizza.
-  - Antworte auf ${langLabel}.`;
+export const translateMenuItem = async (item: MenuItem, targetLang: Language): Promise<Record<string, { name: string; description: string }> | null> => {
+  const ai = getAI();
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-pro-preview",
+      contents: `Übersetze dieses Gericht in ${LANGUAGE_LABELS[targetLang]}:
+      Name: ${item.name}
+      Beschreibung: ${item.description}`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            name: { type: Type.STRING },
+            description: { type: Type.STRING }
+          },
+          required: ["name", "description"]
+        }
+      }
+    });
+    const translation = JSON.parse(response.text || '{}');
+    return { [targetLang]: translation };
+  } catch (error) { return null; }
+};
 
-  if (carnevalMode) {
-    instructions += `
-    AKTUELL IST BASLER FASNACHT:
-    - Sei festlich gestimmt. Erwähne Begriffe wie "Räppli" (Konfetti), "Morgestraich" (Beginn der Fasnacht), "Larve" (Maske).
-    - Empfiehl unbedingt unsere Basler Mehlsuppe (CHF 12.00) als perfekte Stärkung.
-    - Sag Dinge wie: "Drei scheenschte Dääg!" (Die drei schönsten Tage).
-    - Wenn Gäste nach etwas Warmem fragen, ist die Mehlsuppe deine erste Wahl.`;
-  }
+export const enhanceGuestImage = async (base64ImageWithPrefix: string, style: string): Promise<string | null> => {
+  const ai = getAI();
+  const base64Data = base64ImageWithPrefix.split(',')[1];
+  const mimeType = base64ImageWithPrefix.split(';')[0].split(':')[1];
 
-  instructions += `
-  SPORADISCHE EMPFEHLUNGEN:
-  - Empfiehl charmant Gerichte aus der Karte: ${menuStr}.`;
+  let stylePrompt = `Make the photo look like a professional restaurant shot in style: ${style}. Focus on lighting and food aesthetics.`;
 
-  return instructions;
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash-image',
+      contents: {
+        parts: [
+          { inlineData: { data: base64Data, mimeType: mimeType } },
+          { text: stylePrompt },
+        ],
+      },
+    });
+
+    if (response.candidates?.[0].content.parts) {
+      for (const part of response.candidates[0].content.parts) {
+        if (part.inlineData) {
+          return `data:${part.inlineData.mimeType || mimeType};base64,${part.inlineData.data}`;
+        }
+      }
+    }
+    return null;
+  } catch (error) { return null; }
 };
