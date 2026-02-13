@@ -1,16 +1,14 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { MenuItem, Reservation, SocialPost, Language, Category } from '../types';
-import { translateMenuItem, generateProfessionalResponse } from '../services/geminiService';
+import { MenuItem, Reservation, SocialPost, Language, Category, DEFAULT_CATEGORIES, ContactMessage } from '../types';
 import { UI_STRINGS } from '../constants/translations';
+import React, { useState, useMemo } from 'react';
 import { 
-  Edit, Trash2, Loader2, CalendarDays, User, Volume2, 
-  CheckCircle, AlertCircle, Trash, QrCode, Printer, 
-  Globe, Languages, Search, Filter, SlidersHorizontal, 
-  Coins, Eye, EyeOff, XCircle, Check, Instagram, 
-  MessageCircle, BarChart3, TrendingUp, Calendar, Send,
-  Sparkles
+  Edit, Trash2, Loader2, Search, Filter, 
+  Plus, Save, X, UtensilsCrossed, Instagram, 
+  ShieldCheck, CheckCircle2, AlertCircle, Pizza, Coffee, Wine, Leaf, 
+  Dessert as DessertIcon, Sparkles, Send, Camera, Layout, MessageSquare, Mail, User, Clock
 } from 'lucide-react';
+import { generateProfessionalResponse } from '../services/geminiService';
 
 interface Props {
   menu: MenuItem[];
@@ -20,600 +18,463 @@ interface Props {
   language: Language;
   reservations: Reservation[];
   setReservations: React.Dispatch<React.SetStateAction<Reservation[]>>;
+  messages: ContactMessage[];
+  setMessages: React.Dispatch<React.SetStateAction<ContactMessage[]>>;
 }
 
-const LANG_FLAGS: Record<Language, string> = {
-  de: '🇩🇪',
-  en: '🇬🇧',
-  fr: '🇫🇷',
-  it: '🇮🇹',
-  tr: '🇹🇷'
-};
-
-const CATEGORIES = ['Alle', 'Vorspeise', 'Hauptgang', 'Dessert', 'Getränke'];
-
-// Mock Comments for Social Studio
-const MOCK_COMMENTS = [
-  { id: 'c1', user: '@basel_foodie', text: 'Die Pizza Napoli war einfach unglaublich! Beste Kruste in der Stadt.', date: 'vor 2 Std.' },
-  { id: 'c2', user: '@rhein_lover', text: 'Kommt bald wieder Mehlsuppe auf die Karte? Ich vermisse sie.', date: 'vor 5 Std.' },
-  { id: 'c3', user: '@travel_ch', text: 'Wunderschöne Aussicht und toller Service. Sehr empfehlenswert.', date: 'Gestern' }
-];
-
-export const StaffDashboard: React.FC<Props> = ({ menu, setMenu, posts, setPosts, language, reservations, setReservations }) => {
-  const [activeTab, setActiveTab] = useState<'menu' | 'reservations' | 'social' | 'moderation' | 'tables'>('tables');
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const [isPrintView, setIsPrintView] = useState(false);
-  const [translatingItem, setTranslatingItem] = useState<string | null>(null);
-  const [selectedTranslationLang, setSelectedTranslationLang] = useState<Language>('en');
-
+export const StaffDashboard: React.FC<Props> = ({ menu, setMenu, posts, setPosts, language, reservations, setReservations, messages, setMessages }) => {
+  const [activeTab, setActiveTab] = useState<'menu' | 'reservations' | 'moderation' | 'social' | 'messages'>('menu');
+  const [isItemModalOpen, setIsItemModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<Partial<MenuItem> | null>(null);
+  
   // Social Studio States
-  const [generatingResponseId, setGeneratingResponseId] = useState<string | null>(null);
-  const [aiResponses, setAiResponses] = useState<Record<string, string>>({});
+  const [socialTopic, setSocialTopic] = useState('');
+  const [isGeneratingCaption, setIsGeneratingCaption] = useState(false);
+  const [generatedCaption, setGeneratedCaption] = useState('');
+  const [socialImage, setSocialImage] = useState('https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&q=80&w=1200');
 
-  // Filter States
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterCategory, setFilterCategory] = useState('Alle');
-  const [filterAvailability, setFilterAvailability] = useState<'all' | 'available' | 'unavailable'>('all');
-  const [minPrice, setMinPrice] = useState<string>('');
-  const [maxPrice, setMaxPrice] = useState<string>('');
-  const [showFilters, setShowFilters] = useState(false);
-
-  const [tables, setTables] = useState<string[]>(() => {
-    const saved = localStorage.getItem('restaurantTables');
-    return saved ? JSON.parse(saved) : ['1', '2', '3', '4', '5'];
-  });
+  const [filterCategory, setFilterCategory] = useState<Category>('Alle');
 
   const t = UI_STRINGS[language];
 
-  useEffect(() => {
-    localStorage.setItem('restaurantTables', JSON.stringify(tables));
-  }, [tables]);
-
-  useEffect(() => {
-    if (toast) {
-      const timer = setTimeout(() => setToast(null), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [toast]);
-
-  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
-    setToast({ message, type });
-  };
-
-  const handleTranslate = async (item: MenuItem, targetLang: Language) => {
-    if (translatingItem) return;
-    setTranslatingItem(`${item.id}-${targetLang}`);
-    
+  const handleGenerateSocialPost = async () => {
+    if (!socialTopic) return;
+    setIsGeneratingCaption(true);
     try {
-      const translationResult = await translateMenuItem(item, targetLang);
-      if (translationResult) {
-        setMenu(prev => prev.map(m => 
-          m.id === item.id 
-            ? { ...m, translations: { ...m.translations, ...translationResult } } 
-            : m
-        ));
-        showToast(`Übersetzung für ${item.name} (${targetLang.toUpperCase()}) bereit!`);
-      } else {
-        showToast("Übersetzung fehlgeschlagen.", "error");
-      }
-    } catch (err) {
-      showToast("KI-Dienst nicht erreichbar.", "error");
+      const caption = await generateProfessionalResponse(socialTopic, language);
+      setGeneratedCaption(caption);
+    } catch (error) {
+      console.error(error);
     } finally {
-      setTranslatingItem(null);
+      setIsGeneratingCaption(false);
     }
   };
 
-  const handleAiResponse = async (commentId: string, commentText: string) => {
-    setGeneratingResponseId(commentId);
-    try {
-      const response = await generateProfessionalResponse(commentText, language);
-      setAiResponses(prev => ({ ...prev, [commentId]: response }));
-      showToast("Professionelle Antwort generiert.");
-    } catch (err) {
-      showToast("Fehler bei der KI-Antwort.", "error");
-    } finally {
-      setGeneratingResponseId(null);
-    }
-  };
-
-  const toggleAvailability = (itemId: string) => {
-    setMenu(prev => prev.map(m => 
-      m.id === itemId ? { ...m, available: !m.available } : m
-    ));
-    showToast("Verfügbarkeit aktualisiert.");
-  };
-
-  // Fixed: Implemented missing downloadQRCode function to handle table QR code downloads
-  const downloadQRCode = (table: string) => {
-    const canvas = document.createElement('canvas');
-    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(window.location.origin + '?table=' + table)}&bgcolor=ffffff&color=001C30`;
-    
-    const img = new Image();
-    img.crossOrigin = "Anonymous";
-    img.onload = () => {
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.drawImage(img, 0, 0);
-        const link = document.createElement('a');
-        link.download = `rheinhafen-tisch-${table}.png`;
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-      }
+  const handlePublishOfficialPost = () => {
+    if (!generatedCaption) return;
+    const newPost: SocialPost = {
+      id: `official-${Date.now()}`,
+      platform: 'instagram',
+      content: generatedCaption,
+      date: 'Heute',
+      image: socialImage,
+      isGuestPost: false,
+      status: 'approved'
     };
-    img.src = qrUrl;
-    showToast(`QR Code für Tisch ${table} wird heruntergeladen...`);
+    setPosts(prev => [newPost, ...prev]);
+    setGeneratedCaption('');
+    setSocialTopic('');
+    setActiveTab('moderation');
+  };
+
+  const getCategoryIcon = (cat: Category) => {
+    switch(cat) {
+      case 'Hauptgang': return <Pizza size={16} />;
+      case 'Getränke': return <Wine size={16} />;
+      case 'Salate': return <Leaf size={16} />;
+      case 'Dessert': return <DessertIcon size={16} />;
+      case 'Frühstück': return <Coffee size={16} />;
+      default: return <UtensilsCrossed size={16} />;
+    }
   };
 
   const filteredMenu = useMemo(() => {
-    return menu.filter(item => {
-      const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                           item.description.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesCategory = filterCategory === 'Alle' || item.category === filterCategory;
-      const matchesAvailability = filterAvailability === 'all' || 
-                                 (filterAvailability === 'available' && item.available) || 
-                                 (filterAvailability === 'unavailable' && !item.available);
-      
-      const price = item.price;
-      const minP = minPrice === '' ? 0 : parseFloat(minPrice);
-      const maxP = maxPrice === '' ? Infinity : parseFloat(maxPrice);
-      const matchesPrice = price >= minP && price <= maxP;
-
-      return matchesSearch && matchesCategory && matchesAvailability && matchesPrice;
+    return menu.filter(m => {
+      const matchesSearch = m.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                           m.description.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCat = filterCategory === 'Alle' || m.category === filterCategory;
+      return matchesSearch && matchesCat;
     });
-  }, [menu, searchQuery, filterCategory, filterAvailability, minPrice, maxPrice]);
-
-  if (isPrintView) {
-    return (
-      <div className="fixed inset-0 bg-white z-[300] overflow-y-auto p-12 text-black print:p-0">
-        <div className="flex justify-between items-center mb-12 print:hidden">
-           <h2 className="text-2xl font-black uppercase text-blue-900">Druckvorschau QR-Codes</h2>
-           <div className="flex gap-4">
-              <button onClick={() => setIsPrintView(false)} className="px-6 py-3 bg-gray-100 rounded-xl font-bold uppercase text-[10px]">Schließen</button>
-              <button onClick={() => window.print()} className="px-6 py-3 bg-blue-700 text-white rounded-xl font-bold uppercase text-[10px] flex items-center gap-2">
-                <Printer size={16} /> Jetzt Drucken
-              </button>
-           </div>
-        </div>
-        
-        <div className="grid grid-cols-2 gap-8 md:grid-cols-3 print:grid-cols-3 print:gap-4">
-          {tables.map(table => (
-            <div key={table} className="border-2 border-gray-200 rounded-[2rem] p-8 flex flex-col items-center text-center page-break-inside-avoid shadow-sm">
-               <div className="w-16 h-16 mb-4">
-                  <svg viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
-                    <path d="M120 70 L126 125 L114 125 Z" fill="#003399" />
-                    <text x="120" y="65" textAnchor="middle" fontFamily="Cinzel, serif" fontSize="42" fontWeight="700" fill="#003399">RH</text>
-                  </svg>
-               </div>
-               <div className="bg-white p-2 border border-gray-100 rounded-xl mb-4">
-                 <img 
-                   src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(window.location.origin + '?table=' + table)}&bgcolor=ffffff&color=001C30`} 
-                   alt={`QR Tisch ${table}`}
-                   className="w-48 h-48"
-                 />
-               </div>
-               <h4 className="text-2xl font-black brand-font text-blue-900 uppercase">Tisch {table}</h4>
-               <p className="text-[8px] text-gray-400 font-bold uppercase tracking-widest mt-1">rheinhafen-basel.ch</p>
-            </div>
-          ))}
-        </div>
-        <style>{`@media print { body { background: white !important; } .print-hidden { display: none !important; } @page { margin: 1cm; } }`}</style>
-      </div>
-    );
-  }
-
-  const pendingCount = posts.filter(p => p.isGuestPost && p.status === 'pending').length;
+  }, [menu, searchQuery, filterCategory]);
 
   return (
-    <div className="space-y-12 pb-24 animate-in fade-in duration-500">
-      {toast && (
-        <div className={`fixed top-6 left-1/2 -translate-x-1/2 z-[200] px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 border ${toast.type === 'success' ? 'bg-green-600 border-green-400' : 'bg-red-600 border-red-400'}`}>
-          {toast.type === 'success' ? <CheckCircle size={18} /> : <AlertCircle size={18} />}
-          <span className="text-[10px] font-black uppercase tracking-widest">{toast.message}</span>
-        </div>
-      )}
-
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+    <div className="space-y-10 animate-in fade-in duration-500">
+      <header className="flex flex-col md:flex-row justify-between items-center gap-6 bg-blue-900/10 p-8 rounded-[3rem] border border-white/5">
         <div>
-           <h2 className="text-4xl md:text-5xl font-bold brand-font text-white uppercase leading-tight tracking-tighter">Hafen Cockpit</h2>
-           <p className="text-white/40 text-[10px] uppercase tracking-[0.4em] font-black mt-1 italic">Moderation & Star-Management</p>
+          <h2 className="text-4xl font-black brand-font uppercase tracking-tight">Hafen Cockpit</h2>
+          <p className="text-white/40 text-xs font-black tracking-widest uppercase">Echtzeit-Verwaltung & Service</p>
         </div>
-        <div className="flex gap-4">
-           <button onClick={() => setIsPrintView(true)} className="bg-white/10 hover:bg-white/20 border border-white/10 px-6 py-4 rounded-3xl flex items-center gap-3 transition-all">
-             <Printer size={18} className="text-blue-400" />
-             <span className="text-[10px] font-black uppercase tracking-widest text-white">Druck-Modus</span>
-           </button>
-        </div>
-      </div>
-
-      <div className="flex justify-center -mx-4 px-4 overflow-x-auto no-scrollbar">
-        <div className="bg-blue-950/60 p-1.5 rounded-3xl border border-white/10 flex gap-1">
+        <div className="flex bg-black/40 p-1.5 rounded-[2rem] border border-white/10 shadow-inner overflow-x-auto no-scrollbar max-w-full">
           {[
-            { id: 'tables', label: 'Tisch-Manager', icon: <QrCode size={14}/> },
-            { id: 'reservations', label: 'VIP-Gäste', icon: <User size={14}/> },
-            { id: 'menu', label: 'Speisekarte', icon: <Languages size={14}/> },
-            { id: 'social', label: 'Social Studio', icon: <Instagram size={14}/> },
-            { id: 'moderation', label: 'Posts', badge: pendingCount, icon: <Eye size={14}/> }
+            { id: 'menu', label: 'Speisekarte', icon: <UtensilsCrossed size={16} /> },
+            { id: 'reservations', label: 'Tisch-Plan', icon: <ShieldCheck size={16} /> },
+            { id: 'social', label: 'Studio', icon: <Sparkles size={16} /> },
+            { id: 'moderation', label: 'Feed', icon: <Instagram size={16} /> },
+            { id: 'messages', label: 'Kontakt', icon: <MessageSquare size={16} />, badge: messages.filter(m => !m.isRead).length }
           ].map(tab => (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 shrink-0 ${activeTab === tab.id ? 'bg-blue-700 text-white shadow-xl' : 'text-white/40 hover:text-white'}`}>
-              {tab.icon} {tab.label} {tab.badge ? <span className="bg-red-500 text-white px-2 py-0.5 rounded-full text-[8px]">{tab.badge}</span> : null}
+            <button 
+              key={tab.id} 
+              onClick={() => {
+                setActiveTab(tab.id as any);
+                if (tab.id === 'messages') {
+                  setMessages(prev => prev.map(m => ({ ...m, isRead: true })));
+                }
+              }} 
+              className={`relative px-6 py-3 rounded-[1.5rem] flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all shrink-0 ${activeTab === tab.id ? 'bg-blue-600 text-white shadow-lg' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
+            >
+              {tab.icon} {tab.label}
+              {tab.badge ? (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center text-[8px] animate-bounce">
+                  {tab.badge}
+                </span>
+              ) : null}
             </button>
           ))}
         </div>
-      </div>
+      </header>
 
-      {activeTab === 'social' && (
-        <div className="space-y-8 animate-in slide-in-from-bottom-4">
-          {/* Instagram Account Card */}
-          <div className="bg-gradient-to-br from-[#833ab4] via-[#fd1d1d] to-[#fcb045] p-[1px] rounded-[3rem] shadow-2xl">
-            <div className="bg-[#001C30] rounded-[3rem] p-8 flex flex-col md:flex-row justify-between items-center gap-8">
-              <div className="flex items-center gap-6">
-                <div className="w-20 h-20 rounded-full p-1 bg-gradient-to-tr from-yellow-400 via-pink-600 to-purple-600">
-                  <div className="w-full h-full rounded-full bg-[#001C30] p-1">
-                    <img src="https://cdn-icons-png.flaticon.com/512/8805/8805068.png" className="w-full h-full object-contain" alt="IG" />
-                  </div>
-                </div>
-                <div>
-                  <h3 className="text-2xl font-bold text-white uppercase brand-font">@restaurantrheinhafen</h3>
-                  <div className="flex items-center gap-4 mt-2">
-                    <span className="flex items-center gap-1 text-[10px] font-black uppercase text-green-400">
-                      <CheckCircle size={12} /> Verbunden
-                    </span>
-                    <span className="text-[10px] font-black uppercase text-white/40 tracking-widest">Offizieller Hafen-Account</span>
-                  </div>
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-6 text-center">
-                 <div>
-                   <p className="text-xl font-black text-white">1.2k</p>
-                   <p className="text-[8px] font-black uppercase text-white/30 tracking-widest">Follower</p>
-                 </div>
-                 <div>
-                   <p className="text-xl font-black text-white">842</p>
-                   <p className="text-[8px] font-black uppercase text-white/30 tracking-widest">Interaktionen</p>
-                 </div>
-                 <div>
-                   <TrendingUp size={24} className="text-green-500 mx-auto" />
-                   <p className="text-[8px] font-black uppercase text-white/30 tracking-widest">+12%</p>
-                 </div>
-              </div>
+      {/* Messages Tab */}
+      {activeTab === 'messages' && (
+        <div className="space-y-6">
+          {messages.length === 0 ? (
+            <div className="py-20 text-center space-y-4 bg-white/5 rounded-[3rem] border border-dashed border-white/10">
+              <Mail className="mx-auto text-white/10" size={64} />
+              <p className="text-xs font-black uppercase tracking-[0.3em] text-white/20">Keine neuen Nachrichten vorhanden</p>
             </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Professional Interaction - AI Response Generator */}
-            <div className="bg-blue-900/10 border border-white/5 rounded-[3rem] p-8 space-y-6">
-              <div className="flex items-center justify-between mb-4">
-                 <h4 className="text-lg font-bold brand-font uppercase flex items-center gap-2">
-                    <MessageCircle size={20} className="text-blue-500" /> Letzte Kommentare
-                 </h4>
-                 <span className="text-[9px] font-black uppercase bg-blue-500/10 text-blue-500 px-3 py-1 rounded-full border border-blue-500/20">KI-Antworten aktiv</span>
-              </div>
-              <div className="space-y-4">
-                {MOCK_COMMENTS.map(comment => (
-                  <div key={comment.id} className="bg-white/5 border border-white/10 p-5 rounded-2xl space-y-4 group hover:border-blue-500/30 transition-all">
-                    <div className="flex justify-between items-start">
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs font-bold text-blue-400">{comment.user}</span>
-                        <span className="text-[9px] text-white/20 uppercase font-black">{comment.date}</span>
+          ) : (
+            <div className="grid grid-cols-1 gap-4">
+              {messages.map(msg => (
+                <div key={msg.id} className="bg-white/5 border border-white/10 rounded-3xl p-8 flex flex-col md:flex-row gap-6 hover:bg-white/[0.07] transition-all">
+                  <div className="md:w-1/4 space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-blue-600/20 rounded-xl flex items-center justify-center">
+                        <User className="text-blue-500" size={20} />
                       </div>
-                      <button 
-                        onClick={() => handleAiResponse(comment.id, comment.text)}
-                        disabled={generatingResponseId === comment.id}
-                        className="text-[9px] font-black uppercase text-blue-400 hover:text-white flex items-center gap-1 transition-colors"
-                      >
-                        {generatingResponseId === comment.id ? <Loader2 size={10} className="animate-spin" /> : <Sparkles size={10} />}
-                        Antwort generieren
-                      </button>
+                      <div>
+                        <span className="text-[10px] font-black uppercase text-white/40 block">Absender</span>
+                        <h4 className="font-bold text-white text-sm">{msg.name}</h4>
+                      </div>
                     </div>
-                    <p className="text-xs text-white/70 italic">"{comment.text}"</p>
-                    {aiResponses[comment.id] && (
-                      <div className="bg-blue-900/40 p-4 rounded-xl border border-blue-500/20 mt-2 animate-in slide-in-from-top-2">
-                        <div className="flex items-center gap-2 mb-2">
-                          <CheckCircle size={10} className="text-blue-500" />
-                          <span className="text-[8px] font-black uppercase text-blue-500 tracking-widest">KI-Vorschlag (Professionell)</span>
-                        </div>
-                        <p className="text-[11px] text-white/90 leading-relaxed italic">"{aiResponses[comment.id]}"</p>
-                        <div className="flex gap-2 pt-3">
-                          <button className="flex-1 bg-blue-600 text-white text-[9px] font-black uppercase py-2 rounded-lg flex items-center justify-center gap-2">
-                            <Send size={10} /> Senden
-                          </button>
-                          <button onClick={() => setAiResponses(prev => { const n = {...prev}; delete n[comment.id]; return n; })} className="px-3 bg-white/5 text-white/20 hover:text-white rounded-lg transition-colors">
-                            <XCircle size={14} />
-                          </button>
-                        </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-orange-600/20 rounded-xl flex items-center justify-center">
+                        <Mail className="text-orange-500" size={20} />
                       </div>
-                    )}
+                      <div>
+                        <span className="text-[10px] font-black uppercase text-white/40 block">Email</span>
+                        <a href={`mailto:${msg.email}`} className="text-xs text-blue-400 hover:underline">{msg.email}</a>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center">
+                        <Clock className="text-white/40" size={20} />
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-black uppercase text-white/40 block">Eingang</span>
+                        <span className="text-[10px] text-white/60">{msg.date}</span>
+                      </div>
+                    </div>
                   </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Content Planner */}
-            <div className="bg-blue-900/10 border border-white/5 rounded-[3rem] p-8 space-y-6">
-               <h4 className="text-lg font-bold brand-font uppercase flex items-center gap-2 mb-4">
-                  <Calendar size={20} className="text-purple-500" /> Inhalts-Planer
-               </h4>
-               <div className="space-y-4">
-                  <div className="bg-purple-900/20 border border-purple-500/20 p-5 rounded-2xl flex items-center gap-4">
-                    <div className="w-12 h-12 bg-purple-700/40 rounded-xl flex items-center justify-center text-purple-400">
-                      <TrendingUp size={24} />
+                  
+                  <div className="flex-1 space-y-4 md:border-l md:border-white/5 md:pl-8">
+                    <div>
+                      <span className="text-[10px] font-black uppercase text-white/40 block mb-1">Betreff</span>
+                      <h4 className="text-lg font-black brand-font text-white">{msg.subject}</h4>
                     </div>
                     <div>
-                       <p className="text-[10px] font-black uppercase text-purple-400 tracking-widest mb-1">Heute posten (Empfehlung)</p>
-                       <p className="text-xs text-white font-bold italic">"Präsentiere die neue Pizza Rheinhafen mit einem stimmungsvollen Video."</p>
+                      <span className="text-[10px] font-black uppercase text-white/40 block mb-2">Nachricht</span>
+                      <p className="text-sm text-white/80 leading-relaxed italic bg-black/20 p-6 rounded-2xl border border-white/5">
+                        "{msg.message}"
+                      </p>
+                    </div>
+                    <div className="flex justify-end gap-3 pt-4">
+                      <button onClick={() => setMessages(prev => prev.filter(m => m.id !== msg.id))} className="px-6 py-3 bg-red-600/10 text-red-500 border border-red-500/20 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all">
+                        Löschen
+                      </button>
+                      <a href={`mailto:${msg.email}?subject=Re: ${msg.subject}`} className="px-8 py-3 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl hover:bg-blue-500 transition-all flex items-center gap-2">
+                        <Send size={14} /> Antworten
+                      </a>
                     </div>
                   </div>
-                  <div className="bg-white/5 border border-white/10 p-5 rounded-2xl space-y-2">
-                     <div className="flex justify-between items-center">
-                        <span className="text-[10px] font-black uppercase text-white/20">Morgen, 11:00</span>
-                        <span className="text-[8px] font-black uppercase text-blue-400 bg-blue-400/10 px-2 py-0.5 rounded-full">Geplant</span>
-                     </div>
-                     <p className="text-xs text-white/60">Story: Blick hinter die Kulissen bei Maestro Sebastiano.</p>
-                  </div>
-                  <button className="w-full py-5 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest text-white/40 hover:bg-white/10 hover:text-white transition-all flex items-center justify-center gap-3">
-                    <Edit size={16} /> Neuen Post planen
-                  </button>
-               </div>
-
-               {/* Stats Overview */}
-               <div className="pt-8 grid grid-cols-2 gap-4">
-                  <div className="bg-black/20 p-4 rounded-2xl border border-white/5">
-                     <BarChart3 size={18} className="text-blue-500 mb-2" />
-                     <p className="text-[8px] font-black uppercase text-white/30">Engagement-Rate</p>
-                     <p className="text-lg font-black text-white">4.8%</p>
-                  </div>
-                  <div className="bg-black/20 p-4 rounded-2xl border border-white/5">
-                     <User size={18} className="text-pink-500 mb-2" />
-                     <p className="text-[8px] font-black uppercase text-white/30">Neue Abonnenten</p>
-                     <p className="text-lg font-black text-white">+42</p>
-                  </div>
-               </div>
+                </div>
+              ))}
             </div>
-          </div>
+          )}
         </div>
       )}
 
-      {activeTab === 'menu' && (
-        <div className="space-y-8 animate-in slide-in-from-bottom-4">
-           {/* LANGUAGES STUDIO */}
-           <div className="bg-blue-900/20 p-8 rounded-[2.5rem] border border-white/10 flex flex-col md:flex-row justify-between items-center gap-6">
-              <div>
-                 <h3 className="text-xl font-bold text-white uppercase brand-font mb-2">Sprachen-Studio</h3>
-                 <p className="text-white/40 text-[10px] uppercase tracking-widest font-black">Wählen Sie eine Zielsprache für KI-Übersetzungen</p>
+      {/* Social Media Studio Tab */}
+      {activeTab === 'social' && (
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-10">
+           {/* Generator Left */}
+           <div className="bg-white/5 border border-white/10 rounded-[3rem] p-10 space-y-8 h-fit">
+              <div className="flex items-center gap-4">
+                 <div className="w-12 h-12 bg-pink-600 rounded-2xl flex items-center justify-center shadow-xl">
+                    <Sparkles className="text-white" size={24} />
+                 </div>
+                 <div>
+                    <h3 className="text-2xl font-black brand-font uppercase">{t.socialStudio}</h3>
+                    <p className="text-[10px] text-white/40 uppercase font-bold tracking-widest">{t.socialSub}</p>
+                 </div>
               </div>
-              <div className="flex gap-2 bg-black/20 p-2 rounded-2xl border border-white/5">
-                 {(['en', 'fr', 'it', 'tr'] as Language[]).map(lang => (
-                    <button 
-                      key={lang} 
-                      onClick={() => setSelectedTranslationLang(lang)}
-                      className={`px-5 py-3 rounded-xl flex items-center gap-2 transition-all ${selectedTranslationLang === lang ? 'bg-blue-600 text-white shadow-lg' : 'text-white/40 hover:text-white'}`}
-                    >
-                       <span className="text-lg">{LANG_FLAGS[lang]}</span>
-                       <span className="text-[10px] font-black uppercase">{lang}</span>
-                    </button>
-                 ))}
-              </div>
-           </div>
 
-           {/* ADVANCED FILTER CENTER */}
-           <div className="bg-blue-950/40 border border-white/5 rounded-[2.5rem] p-8 space-y-8">
-              <div className="flex flex-col lg:flex-row gap-6 items-center">
-                 <div className="relative flex-1 w-full">
-                    <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20" size={18} />
-                    <input 
-                      type="text" 
-                      placeholder="Menü durchsuchen..." 
-                      value={searchQuery}
-                      onChange={e => setSearchQuery(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-14 pr-6 text-sm text-white focus:border-blue-500 transition-all outline-none"
+              <div className="space-y-6">
+                 <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase text-white/40 ml-1">Thema / Fokus des Posts</label>
+                    <textarea 
+                      value={socialTopic}
+                      onChange={e => setSocialTopic(e.target.value)}
+                      placeholder="Was gibt es Neues? (z.B. Unsere neue Trüffel-Pizza ist da!)"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl p-6 text-sm outline-none focus:border-pink-500 h-32 resize-none transition-all"
                     />
                  </div>
+                 
+                 <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase text-white/40 ml-1">Bild-URL (Teaser)</label>
+                    <div className="relative">
+                       <Camera className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={18} />
+                       <input 
+                         value={socialImage}
+                         onChange={e => setSocialImage(e.target.value)}
+                         className="w-full bg-white/5 border border-white/10 rounded-xl p-4 pl-12 text-xs text-white/60 focus:border-pink-500 outline-none" 
+                       />
+                    </div>
+                 </div>
+
                  <button 
-                  onClick={() => setShowFilters(!showFilters)}
-                  className={`px-8 py-4 rounded-2xl flex items-center gap-3 transition-all font-black uppercase text-[10px] tracking-widest border ${showFilters ? 'bg-blue-600 border-blue-400 text-white' : 'bg-white/5 border-white/10 text-white/40 hover:text-white'}`}
+                  onClick={handleGenerateSocialPost}
+                  disabled={isGeneratingCaption || !socialTopic}
+                  className="w-full py-5 bg-gradient-to-r from-pink-600 to-purple-700 text-white rounded-2xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-3 shadow-xl hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-30"
                  >
-                    <SlidersHorizontal size={16} />
-                    {showFilters ? 'Filter schließen' : 'Erweiterte Filter'}
+                    {isGeneratingCaption ? <Loader2 className="animate-spin" /> : <><Sparkles size={18} /> Caption von Sora generieren lassen</>}
                  </button>
               </div>
 
-              {showFilters && (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8 pt-4 border-t border-white/5 animate-in fade-in slide-in-from-top-4">
-                  {/* Category Filter */}
-                  <div className="space-y-3">
-                    <label className="flex items-center gap-2 text-[10px] font-black uppercase text-white/30 tracking-widest">
-                       <Filter size={12} /> Kategorie
-                    </label>
-                    <div className="flex flex-wrap gap-2">
-                      {CATEGORIES.map(cat => (
-                        <button 
-                          key={cat} 
-                          onClick={() => setFilterCategory(cat)}
-                          className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase transition-all ${filterCategory === cat ? 'bg-blue-500 text-white' : 'bg-white/5 text-white/40 border border-white/10 hover:border-white/30'}`}
-                        >
-                          {cat}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Availability Filter */}
-                  <div className="space-y-3">
-                    <label className="flex items-center gap-2 text-[10px] font-black uppercase text-white/30 tracking-widest">
-                       <CheckCircle size={12} /> Verfügbarkeit
-                    </label>
-                    <div className="bg-black/20 p-1 rounded-xl flex">
-                      {(['all', 'available', 'unavailable'] as const).map(status => (
-                        <button 
-                          key={status}
-                          onClick={() => setFilterAvailability(status)}
-                          className={`flex-1 py-2 rounded-lg text-[9px] font-black uppercase transition-all ${filterAvailability === status ? 'bg-white/10 text-white' : 'text-white/20 hover:text-white'}`}
-                        >
-                          {status === 'all' ? 'Alle' : status === 'available' ? 'Aktiv' : 'Ausverkauft'}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Price Range */}
-                  <div className="space-y-3 xl:col-span-2">
-                    <label className="flex items-center gap-2 text-[10px] font-black uppercase text-white/30 tracking-widest">
-                       <Coins size={12} /> Preisspanne (CHF)
-                    </label>
-                    <div className="flex items-center gap-4">
-                       <input 
-                         type="number" 
-                         placeholder="Min" 
-                         value={minPrice}
-                         onChange={e => setMinPrice(e.target.value)}
-                         className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-xs text-white outline-none focus:border-blue-500"
-                       />
-                       <span className="text-white/20">bis</span>
-                       <input 
-                         type="number" 
-                         placeholder="Max" 
-                         value={maxPrice}
-                         onChange={e => setMaxPrice(e.target.value)}
-                         className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-xs text-white outline-none focus:border-blue-500"
-                       />
-                       {(minPrice || maxPrice) && (
-                         <button onClick={() => { setMinPrice(''); setMaxPrice(''); }} className="p-2 text-white/20 hover:text-red-400 transition-colors">
-                           <Trash2 size={16} />
-                         </button>
-                       )}
-                    </div>
-                  </div>
+              {generatedCaption && (
+                <div className="pt-8 border-t border-white/5 space-y-4 animate-in slide-in-from-bottom-4">
+                   <div className="flex justify-between items-center">
+                      <span className="text-[10px] font-black uppercase text-pink-500 tracking-widest">Vorschlag von Sora</span>
+                      <button onClick={() => setGeneratedCaption('')} className="text-white/20 hover:text-white"><X size={14} /></button>
+                   </div>
+                   <div className="bg-pink-600/5 border border-pink-500/20 rounded-2xl p-6">
+                      <p className="text-sm italic text-white/90 leading-relaxed">"{generatedCaption}"</p>
+                   </div>
+                   <button 
+                    onClick={handlePublishOfficialPost}
+                    className="w-full py-5 bg-white text-blue-900 rounded-2xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-3 hover:bg-blue-50 transition-all"
+                   >
+                      <Send size={18} /> Jetzt offiziell posten
+                   </button>
                 </div>
               )}
            </div>
 
-           <div className="flex justify-between items-center px-4">
-              <p className="text-[10px] font-black uppercase tracking-widest text-white/20">
-                 Zeige <span className="text-blue-500">{filteredMenu.length}</span> von {menu.length} Artikeln
-              </p>
+           {/* Preview Right */}
+           <div className="flex flex-col items-center justify-center p-10 bg-black/20 rounded-[3rem] border border-dashed border-white/10">
+              <div className="w-full max-w-[360px] bg-[#001C30] rounded-[2.5rem] border border-white/10 overflow-hidden shadow-2xl relative">
+                 <div className="p-4 border-b border-white/5 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-red-600 to-blue-600 p-0.5">
+                       <img src="https://cdn-icons-png.flaticon.com/512/8805/8805068.png" className="w-full h-full rounded-full object-cover border border-[#001C30]" />
+                    </div>
+                    <div>
+                       <span className="text-[10px] font-black uppercase tracking-tighter block text-white">@restaurantrheinhafen</span>
+                       <span className="text-[8px] text-white/30 uppercase font-bold tracking-widest">Vorschau</span>
+                    </div>
+                 </div>
+                 <div className="aspect-square bg-white/5 flex items-center justify-center overflow-hidden">
+                    <img src={socialImage} className="w-full h-full object-cover" alt="Preview" />
+                 </div>
+                 <div className="p-6 space-y-3">
+                    <div className="flex gap-4 mb-2">
+                       <Instagram size={20} className="text-white/60" />
+                       <Layout size={20} className="text-white/60" />
+                    </div>
+                    <p className="text-[12px] leading-relaxed text-white/80">
+                       <span className="font-black mr-2 text-[10px]">RESTAURANTRHEINHAFEN</span>
+                       {generatedCaption || "Ihr Text wird hier erscheinen..."}
+                    </p>
+                    <div className="flex gap-2">
+                       <span className="text-[9px] font-black text-blue-400">#RHEINHAFEN</span>
+                       <span className="text-[9px] font-black text-blue-400">#BASEL</span>
+                    </div>
+                 </div>
+              </div>
+              <p className="mt-8 text-[10px] uppercase font-black tracking-[0.4em] text-white/10 italic">Offizieller Post Simulator</p>
            </div>
+        </div>
+      )}
 
-           <div className="grid grid-cols-1 gap-6">
-              {filteredMenu.map(item => (
-                <div key={item.id} className="bg-blue-900/10 border border-white/5 p-8 rounded-[2.5rem] flex flex-col md:flex-row items-center gap-8 group hover:border-blue-500/20 transition-all relative overflow-hidden">
-                   <div className="w-24 h-24 rounded-2xl overflow-hidden shrink-0 shadow-xl border border-white/10 relative">
-                      <img src={item.image} className={`w-full h-full object-cover transition-all ${!item.available ? 'grayscale opacity-40' : ''}`} alt={item.name} />
-                      {!item.available && (
-                        <div className="absolute inset-0 flex items-center justify-center">
-                           <XCircle size={32} className="text-red-500/60" />
+      {/* Speisekarte Tab */}
+      {activeTab === 'menu' && (
+        <div className="space-y-8">
+          <div className="flex flex-wrap gap-4 items-center justify-between bg-white/5 p-6 rounded-[2.5rem] border border-white/5 shadow-xl">
+             <div className="flex flex-wrap gap-3 flex-1 min-w-[300px]">
+                <div className="relative flex-1 max-w-md">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={18} />
+                  <input 
+                    type="text" 
+                    value={searchQuery} 
+                    onChange={e => setSearchQuery(e.target.value)} 
+                    placeholder="Gericht oder Zutat suchen..." 
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-12 py-4 text-sm outline-none focus:border-blue-500 transition-all text-white"
+                  />
+                </div>
+                <div className="relative">
+                  <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={16} />
+                  <select 
+                    value={filterCategory} 
+                    onChange={e => setFilterCategory(e.target.value as Category)} 
+                    className="bg-white/5 border border-white/10 rounded-2xl pl-10 pr-6 py-4 text-xs font-black uppercase outline-none focus:border-blue-500 appearance-none text-white"
+                  >
+                     <option value="Alle" className="bg-[#001C30]">Alle Kategorien</option>
+                     {DEFAULT_CATEGORIES.map(c => <option key={c} value={c} className="bg-[#001C30]">{c}</option>)}
+                  </select>
+                </div>
+             </div>
+             <button 
+              onClick={() => {
+                setEditingItem({
+                  id: `item-${Date.now()}`,
+                  name: '',
+                  description: '',
+                  price: 0,
+                  category: 'Hauptgang',
+                  available: true,
+                  image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=800'
+                });
+                setIsItemModalOpen(true);
+              }} 
+              className="px-10 py-5 bg-blue-700 hover:bg-blue-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest flex items-center gap-3 shadow-2xl shadow-blue-900/40 transition-all active:scale-95"
+             >
+               <Plus size={20} /> Neues Gericht hinzufügen
+             </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {filteredMenu.map(item => (
+              <div key={item.id} className={`bg-white/5 border rounded-[3rem] overflow-hidden group transition-all duration-500 hover:shadow-2xl ${item.available ? 'border-white/10' : 'border-red-500/20 opacity-70'}`}>
+                <div className="aspect-video relative overflow-hidden border-b border-white/5">
+                  <img src={item.image} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-[2s]" alt={item.name} />
+                  <div className={`absolute top-6 left-6 px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-2 shadow-xl ${item.available ? 'bg-green-600' : 'bg-red-600'}`}>
+                    {item.available ? <CheckCircle2 size={12} /> : <AlertCircle size={12} />}
+                    {item.available ? 'Auf Lager' : 'Ausverkauft'}
+                  </div>
+                  <div className="absolute bottom-4 right-4 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 text-[9px] font-black uppercase tracking-widest flex items-center gap-2">
+                    {getCategoryIcon(item.category)}
+                    {item.category}
+                  </div>
+                </div>
+                <div className="p-8 space-y-4">
+                  <div className="flex justify-between items-start">
+                    <h4 className="font-bold text-xl uppercase tracking-tight">{item.name}</h4>
+                    <span className="font-black text-blue-400 text-lg">CHF {item.price.toFixed(2)}</span>
+                  </div>
+                  <p className="text-white/40 text-xs leading-relaxed line-clamp-2 italic">"{item.description}"</p>
+                  
+                  <div className="pt-6 flex gap-3 border-t border-white/5">
+                    <button 
+                      onClick={() => setMenu(prev => prev.map(m => m.id === item.id ? { ...m, available: !m.available } : m))} 
+                      className={`flex-1 py-4 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border ${item.available ? 'bg-white/5 border-white/10 hover:bg-red-500/10 hover:border-red-500/30' : 'bg-green-600/20 border-green-500/30 text-green-500 hover:bg-green-500/30'}`}
+                    >
+                      {item.available ? 'Abmelden (Sold Out)' : 'Wieder verfügbar'}
+                    </button>
+                    <button onClick={() => { setEditingItem(item); setIsItemModalOpen(true); }} className="p-4 bg-blue-600/10 text-blue-400 rounded-xl border border-blue-500/20 hover:bg-blue-600/20 transition-all"><Edit size={18} /></button>
+                    <button onClick={() => { if(confirm('Löschen?')) setMenu(prev => prev.filter(m => m.id !== item.id)); }} className="p-4 bg-red-600/10 text-red-500 rounded-xl border border-red-500/20 hover:bg-red-600/20 transition-all"><Trash2 size={18} /></button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Moderation Tab */}
+      {activeTab === 'moderation' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+           {posts.map(post => (
+             <div key={post.id} className={`bg-white/5 border rounded-[3rem] overflow-hidden flex flex-col lg:flex-row ${post.status === 'pending' ? 'border-yellow-500/30' : 'border-white/10 opacity-70'}`}>
+                <div className="w-full lg:w-1/2 aspect-square">
+                   <img src={post.image} className="w-full h-full object-cover" alt="Post" />
+                </div>
+                <div className="p-10 flex flex-col justify-between flex-1 space-y-6">
+                   <div>
+                      <div className="flex items-center gap-4 mb-6">
+                        <img src={post.isGuestPost ? post.guestAvatar : "https://cdn-icons-png.flaticon.com/512/8805/8805068.png"} className={`w-12 h-12 rounded-full border-2 p-0.5 ${post.isGuestPost ? 'border-pink-500' : 'border-blue-500'}`} alt="Avatar" />
+                        <div>
+                          <span className="font-black text-xs uppercase tracking-widest block">{post.isGuestPost ? post.guestHandle : '@restaurantrheinhafen'}</span>
+                          <span className="text-[9px] text-white/30 uppercase font-bold tracking-tighter">{post.date}</span>
                         </div>
+                      </div>
+                      <p className="text-sm text-white/60 italic leading-relaxed">"{post.content}"</p>
+                   </div>
+                   <div className="flex gap-3">
+                      {post.status === 'pending' ? (
+                        <>
+                          <button onClick={() => setPosts(prev => prev.map(p => p.id === post.id ? { ...p, status: 'approved' } : p))} className="flex-1 py-5 bg-green-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-green-500">Freigeben</button>
+                          <button onClick={() => setPosts(prev => prev.map(p => p.id === post.id ? { ...p, status: 'rejected' } : p))} className="flex-1 py-5 bg-red-600/10 text-red-500 rounded-2xl font-black uppercase text-[10px] tracking-widest border border-red-500/20">Ablehnen</button>
+                        </>
+                      ) : (
+                        <button onClick={() => setPosts(prev => prev.filter(p => p.id !== post.id))} className="w-full py-5 bg-red-600/10 text-red-500 rounded-2xl font-black uppercase text-[10px] tracking-widest border border-red-500/20 flex items-center justify-center gap-2"><Trash2 size={14} /> Entfernen</button>
                       )}
                    </div>
-
-                   <div className="flex-1 space-y-2 text-center md:text-left">
-                      <div className="flex flex-col md:flex-row md:items-center gap-2 mb-1">
-                        <h4 className={`text-xl font-bold text-white brand-font uppercase ${!item.available ? 'opacity-40' : ''}`}>{item.name}</h4>
-                        <span className="text-[9px] font-black text-blue-400 bg-blue-400/10 border border-blue-400/20 px-2 py-0.5 rounded-full uppercase tracking-tighter self-center">CHF {item.price.toFixed(2)}</span>
-                      </div>
-                      <p className={`text-white/40 text-xs italic line-clamp-2 ${!item.available ? 'opacity-20' : ''}`}>"{item.description}"</p>
-                      <div className="flex flex-wrap justify-center md:justify-start gap-2 pt-2">
-                         {Object.keys(item.translations || {}).map(langCode => (
-                            <span key={langCode} className="px-3 py-1 bg-green-500/10 border border-green-500/20 text-green-400 text-[8px] font-black rounded-full uppercase tracking-tighter">
-                               {LANG_FLAGS[langCode as Language]} {langCode} bereit
-                            </span>
-                         ))}
-                      </div>
-                   </div>
-
-                   <div className="shrink-0 flex flex-wrap justify-center gap-3">
-                      <button 
-                        onClick={() => toggleAvailability(item.id)}
-                        className={`p-4 rounded-2xl transition-all border ${item.available ? 'bg-white/5 border-white/10 text-white/40 hover:text-red-400 hover:border-red-400/30' : 'bg-red-500 border-red-400 text-white'}`}
-                        title={item.available ? "Als ausverkauft markieren" : "Als verfügbar markieren"}
-                      >
-                         {item.available ? <Eye size={18} /> : <EyeOff size={18} />}
-                      </button>
-
-                      <button 
-                        onClick={() => handleTranslate(item, selectedTranslationLang)}
-                        disabled={!!translatingItem || !item.available}
-                        className="bg-white/5 hover:bg-white/10 border border-white/10 px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-white flex items-center gap-3 transition-all disabled:opacity-10"
-                      >
-                         {translatingItem === `${item.id}-${selectedTranslationLang}` ? <Loader2 className="animate-spin" size={16}/> : <Globe size={16} className="text-blue-500" />}
-                         {selectedTranslationLang}
-                      </button>
-                      <button className="p-4 bg-white/5 border border-white/10 rounded-2xl text-white/40 hover:text-white transition-all"><Edit size={16}/></button>
-                   </div>
                 </div>
-              ))}
-           </div>
+             </div>
+           ))}
         </div>
       )}
 
-      {activeTab === 'reservations' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in slide-in-from-bottom-4">
-          {reservations.map(res => (
-            <div key={res.id} className="bg-blue-900/20 border border-white/10 p-8 rounded-[2.5rem] relative">
-              <div className="flex justify-between items-start mb-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-blue-700 flex items-center justify-center text-white"><User size={24} /></div>
-                  <div><h4 className="text-xl font-bold text-white uppercase">{res.name}</h4><p className="text-blue-400 text-[10px] font-black uppercase">{res.guests} Stars</p></div>
+      {/* Item Add/Edit Modal */}
+      {isItemModalOpen && editingItem && (
+        <div className="fixed inset-0 bg-black/95 backdrop-blur-2xl z-[150] flex items-center justify-center p-4 animate-in fade-in duration-300">
+           <form 
+            onSubmit={(e) => {
+              e.preventDefault();
+              const item = editingItem as MenuItem;
+              setMenu(prev => {
+                const exists = prev.find(m => m.id === item.id);
+                if (exists) return prev.map(m => m.id === item.id ? item : m);
+                return [item, ...prev];
+              });
+              setIsItemModalOpen(false);
+            }} 
+            className="bg-[#001C30] w-full max-w-2xl rounded-[3.5rem] border border-white/10 shadow-2xl overflow-hidden animate-in zoom-in duration-300"
+           >
+              <div className="bg-blue-700 p-8 flex justify-between items-center text-white">
+                 <div className="flex items-center gap-4">
+                    <UtensilsCrossed size={28} />
+                    <div>
+                      <h3 className="text-xl font-black uppercase brand-font tracking-tight">Gericht-Konfigurator</h3>
+                      <p className="text-[10px] uppercase font-black opacity-60">Karte anpassen</p>
+                    </div>
+                 </div>
+                 <button type="button" onClick={() => setIsItemModalOpen(false)} className="p-2 hover:bg-white/10 rounded-full transition-all"><X size={24} /></button>
+              </div>
+              
+              <div className="p-10 space-y-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase text-white/40 ml-1">Gericht Name</label>
+                    <input required value={editingItem.name} onChange={e => setEditingItem({...editingItem, name: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm outline-none focus:border-blue-500 transition-all text-white" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase text-white/40 ml-1">Preis (CHF)</label>
+                    <input required type="number" step="0.05" value={editingItem.price} onChange={e => setEditingItem({...editingItem, price: parseFloat(e.target.value)})} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm outline-none focus:border-blue-500 transition-all text-white" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase text-white/40 ml-1">Kategorie</label>
+                  <div className="grid grid-cols-3 gap-3">
+                    {DEFAULT_CATEGORIES.map(c => (
+                      <button key={c} type="button" onClick={() => setEditingItem({...editingItem, category: c})} className={`py-3 rounded-xl text-[9px] font-black uppercase border transition-all ${editingItem.category === c ? 'bg-blue-600 border-blue-400 text-white' : 'bg-white/5 border-white/10 text-white/40'}`}>{c}</button>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase text-white/40 ml-1">Zutaten / Beschreibung</label>
+                  <textarea required value={editingItem.description} onChange={e => setEditingItem({...editingItem, description: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-sm outline-none focus:border-blue-500 h-32 resize-none transition-all text-white" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase text-white/40 ml-1">Bild-URL</label>
+                  <input required value={editingItem.image} onChange={e => setEditingItem({...editingItem, image: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs outline-none focus:border-blue-500 transition-all text-white/60" />
                 </div>
               </div>
-              <div className="flex items-center gap-6 text-white/60 font-black text-xs uppercase tracking-widest">
-                 <div className="flex items-center gap-2"><CalendarDays size={16} className="text-blue-500" /> {res.date}</div>
-                 <div className="flex items-center gap-2"><Volume2 size={16} className="text-blue-500" /> {res.time}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {activeTab === 'moderation' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 animate-in slide-in-from-bottom-4">
-          {posts.filter(p => p.isGuestPost).map(post => (
-            <div key={post.id} className="bg-blue-900/10 border border-white/5 rounded-[2.5rem] overflow-hidden flex flex-col shadow-2xl group">
-               <div className="aspect-square relative overflow-hidden">
-                  <img src={post.image} className="w-full h-full object-cover" alt="Post" />
-                  <div className={`absolute top-4 right-4 px-4 py-2 rounded-full text-[8px] font-black uppercase tracking-widest shadow-lg ${post.status === 'approved' ? 'bg-green-600' : post.status === 'rejected' ? 'bg-red-600' : 'bg-yellow-600 animate-pulse'}`}>
-                    {post.status}
-                  </div>
-               </div>
-               <div className="p-8 space-y-4 flex-grow flex flex-col">
-                  <div className="flex items-center gap-3">
-                    <img src={post.guestAvatar} className="w-8 h-8 rounded-full border border-white/20" alt="Avatar" />
-                    <span className="text-xs font-bold text-white">{post.guestHandle}</span>
-                  </div>
-                  <p className="text-xs text-white/40 italic flex-grow">"{post.content}"</p>
-                  <div className="flex gap-2 pt-4">
-                    <button onClick={() => setPosts(prev => prev.map(p => p.id === post.id ? {...p, status: 'approved'} : p))} className="flex-1 bg-green-600 py-3 rounded-xl flex items-center justify-center text-white"><Check size={18}/></button>
-                    <button onClick={() => setPosts(prev => prev.map(p => p.id === post.id ? {...p, status: 'rejected'} : p))} className="flex-1 bg-red-600 py-3 rounded-xl flex items-center justify-center text-white"><XCircle size={18}/></button>
-                    <button onClick={() => setPosts(prev => prev.filter(p => p.id !== post.id))} className="p-3 bg-white/5 border border-white/10 rounded-xl text-white/40 hover:text-white"><Trash size={18}/></button>
-                  </div>
-               </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {activeTab === 'tables' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-in slide-in-from-bottom-4">
-          {tables.map(table => (
-            <div key={table} className="bg-blue-900/10 border border-white/5 p-8 rounded-[3rem] flex flex-col items-center text-center space-y-6 group hover:border-blue-500/30 transition-all">
-              <div className="bg-white p-3 rounded-2xl shadow-xl transition-transform group-hover:scale-105">
-                <img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(window.location.origin + '?table=' + table)}&bgcolor=ffffff&color=001C30`} alt={`QR Tisch ${table}`} className="w-32 h-32" />
-              </div>
-              <div>
-                <h4 className="text-2xl font-bold brand-font text-white uppercase">Tisch {table}</h4>
-                <p className="text-[9px] text-white/30 font-black uppercase tracking-widest mt-1">rheinhafen-basel.ch</p>
-              </div>
-              <div className="flex gap-2 w-full">
-                <button 
-                  onClick={() => downloadQRCode(table)}
-                  className="flex-1 bg-blue-700 hover:bg-blue-600 text-white py-4 rounded-xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95"
-                >
-                  <TrendingUp size={14} /> Download
+              <div className="p-8 bg-black/20 border-t border-white/5 flex gap-4">
+                <button type="button" onClick={() => setIsItemModalOpen(false)} className="flex-1 py-5 bg-white/5 border border-white/10 rounded-2xl font-black uppercase text-xs">Abbrechen</button>
+                <button type="submit" className="flex-[2] py-5 bg-blue-700 text-white rounded-2xl font-black uppercase text-xs flex items-center justify-center gap-3 hover:bg-blue-600 transition-all">
+                   <Save size={18} /> Speichern
                 </button>
               </div>
-            </div>
-          ))}
+           </form>
         </div>
       )}
     </div>

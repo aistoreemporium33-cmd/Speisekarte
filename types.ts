@@ -1,10 +1,12 @@
 
 export type Language = 'de' | 'en' | 'fr' | 'it' | 'tr';
 
-export type Category = string;
+export type Category = 'Vorspeise' | 'Salate' | 'Hauptgang' | 'Dessert' | 'Getränke' | 'Frühstück' | 'Alle';
 
-export const DEFAULT_CATEGORIES: string[] = [
+export const DEFAULT_CATEGORIES: Category[] = [
+  'Frühstück',
   'Vorspeise',
+  'Salate',
   'Hauptgang',
   'Dessert',
   'Getränke'
@@ -48,6 +50,16 @@ export interface Reservation {
   status: 'active' | 'checked-in' | 'cancelled';
 }
 
+export interface ContactMessage {
+  id: string;
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+  date: string;
+  isRead: boolean;
+}
+
 export type PostStatus = 'pending' | 'approved' | 'rejected';
 
 export interface SocialPost {
@@ -61,4 +73,5 @@ export interface SocialPost {
   guestHandle?: string;
   guestAvatar?: string;
   status?: PostStatus;
+  likes?: number;
 }

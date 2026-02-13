@@ -31,9 +31,9 @@ export const SocialFeed: React.FC<Props> = ({ posts, language }) => {
           <Camera className="text-blue-500" size={32} />
         </div>
         <h4 className="text-2xl font-black uppercase brand-font tracking-widest">Noch keine Hafen-Momente</h4>
-        <p className="text-white/40 text-sm italic max-w-xs mx-auto">"Uè! Werde der Erste, der seinen Besuch mit uns teilt. Wir warten auf deine Story!" — Pasquale</p>
+        <p className="text-white/40 text-sm italic max-w-xs mx-auto">"Uè! Werde die Erste, die ihren Besuch mit uns teilt. Wir warten auf deine Story!" — Sora</p>
         <div className="pt-4">
-           <span className="text-[8px] font-black uppercase tracking-[0.3em] text-pink-500 bg-pink-500/10 px-4 py-2 rounded-full border border-pink-500/20">Teile deinen Moment oben im Login-Bereich</span>
+           <span className="text-[8px] font-black uppercase tracking-[0.3em] text-pink-500 bg-pink-500/10 px-4 py-2 rounded-full border border-pink-500/20">Teile deinen Moment oben im Menü</span>
         </div>
       </div>
     );
@@ -130,8 +130,8 @@ export const SocialFeed: React.FC<Props> = ({ posts, language }) => {
               <div className="mt-6 pt-6 border-t border-white/5 space-y-2">
                 <p className="text-[10px] text-white/30 font-bold uppercase tracking-widest">{t.viewComments}</p>
                 <div className="flex gap-2 text-xs">
-                  <span className="font-bold text-white/60">Pasquale:</span>
-                  <span className="text-white/40 italic">"Jamme jà! Das ist die wahre Leidenschaft am Hafen! ❤️🍕"</span>
+                  <span className="font-bold text-white/60">Sora:</span>
+                  <span className="text-white/40 italic">"Jamme jà! Das ist die wahre Leidenschaft am Hafen! ❤️🍕 Darf ich euch heute dazu unsere Pizza Rheinhafen empfehlen?"</span>
                 </div>
               </div>
             </div>

@@ -3,7 +3,7 @@ import { GoogleGenAI, LiveServerMessage, Modality } from "@google/genai";
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Send, Mic, MicOff, Volume2, VolumeX, Loader2, Sparkles } from 'lucide-react';
 import { MenuItem, SocialPost, Language } from '../types';
-import { generateSystemInstruction } from '../services/geminiService';
+import { generateSystemInstruction, generateSpeech } from '../services/geminiService';
 import { WaiterAvatar } from './WaiterAvatar';
 import { UI_STRINGS } from '../constants/translations';
 
@@ -83,6 +83,7 @@ export const ChatBot: React.FC<Props> = ({ menu, posts, language, autoStart = fa
   const micStreamRef = useRef<MediaStream | null>(null);
   const nextStartTimeRef = useRef(0);
   const activeSourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
+  const greetedRef = useRef(false);
 
   const initAudio = () => {
     if (!audioContextRef.current) {
@@ -95,6 +96,49 @@ export const ChatBot: React.FC<Props> = ({ menu, posts, language, autoStart = fa
     if (outputAudioContextRef.current.state === 'suspended') outputAudioContextRef.current.resume();
   };
 
+  const speakText = async (text: string) => {
+    if (!isSoundOn) return;
+    initAudio();
+    setIsSpeaking(true);
+    const audioData = await generateSpeech(text);
+    if (audioData) {
+      const ctx = outputAudioContextRef.current!;
+      nextStartTimeRef.current = Math.max(nextStartTimeRef.current, ctx.currentTime);
+      const buffer = await ctx.decodeAudioData(audioData.buffer);
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(ctx.destination);
+      source.onended = () => {
+        activeSourcesRef.current.delete(source);
+        if (activeSourcesRef.current.size === 0) setIsSpeaking(false);
+      };
+      source.start(nextStartTimeRef.current);
+      nextStartTimeRef.current += buffer.duration;
+      activeSourcesRef.current.add(source);
+    } else {
+      setIsSpeaking(false);
+    }
+  };
+
+  // Initial Greeting when App activates
+  useEffect(() => {
+    if (autoStart && !greetedRef.current) {
+      greetedRef.current = true;
+      const greeting = carnevalMode ? t.soraGreetingCarneval : t.soraGreeting;
+      
+      setMessages([{
+        id: 'welcome-sora',
+        role: 'model',
+        text: greeting
+      }]);
+
+      // Speak immediately
+      setTimeout(() => {
+        speakText(greeting);
+      }, 500);
+    }
+  }, [autoStart, carnevalMode, t]);
+
   useEffect(() => {
     if (isOpen && !isLiveMode) {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -105,7 +149,7 @@ export const ChatBot: React.FC<Props> = ({ menu, posts, language, autoStart = fa
         }
       });
     }
-  }, [isOpen, isLiveMode, menu, posts, language, carnevalMode]);
+  }, [isOpen, isLiveMode, menu, posts, language, carnevalMode, t]);
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
@@ -244,8 +288,12 @@ export const ChatBot: React.FC<Props> = ({ menu, posts, language, autoStart = fa
           setMessages(prev => prev.map(m => m.id === tempId ? { ...m, text: fullText } : m));
       }
       setMessages(prev => prev.map(m => m.id === tempId ? { ...m, isStreaming: false } : m));
+      
+      // Auto-speak model response
+      speakText(fullText);
+
     } catch (error) {
-      setMessages(prev => [...prev, { id: 'err', role: 'model', text: t.pasqualeError }]);
+      setMessages(prev => [...prev, { id: 'err', role: 'model', text: t.soraError }]);
     } finally { setIsLoading(false); }
   };
 
@@ -255,7 +303,7 @@ export const ChatBot: React.FC<Props> = ({ menu, posts, language, autoStart = fa
         onClick={() => { initAudio(); setIsOpen(true); }} 
         className={`fixed bottom-6 right-6 w-16 h-16 rounded-full ${carnevalMode ? 'bg-orange-600' : 'bg-blue-700'} shadow-2xl flex items-center justify-center hover:scale-110 transition-all z-50 border-2 border-white/20`}
       >
-        <WaiterAvatar className="w-12 h-12" carnevalMode={carnevalMode} />
+        <WaiterAvatar className={`w-12 h-12 ${isSpeaking ? 'animate-pulse scale-110' : ''}`} carnevalMode={carnevalMode} />
         <div className="absolute -top-1 -right-1 animate-pulse">
            <Sparkles size={16} className="text-yellow-400" />
         </div>
@@ -267,7 +315,7 @@ export const ChatBot: React.FC<Props> = ({ menu, posts, language, autoStart = fa
     <div className={`fixed bottom-6 right-6 w-[95vw] md:w-96 h-[600px] bg-[#001C30] rounded-[2.5rem] shadow-2xl flex flex-col z-50 overflow-hidden border ${carnevalMode ? 'border-orange-500/30' : 'border-blue-500/30'} animate-in slide-in-from-bottom-4`}>
       <div className={`${carnevalMode ? 'bg-orange-600' : 'bg-blue-700'} p-5 flex justify-between items-center text-white shrink-0 shadow-lg`}>
         <div className="flex items-center gap-3">
-          <div className={`relative w-12 h-12 rounded-full ${carnevalMode ? 'bg-orange-900' : 'bg-blue-900'} flex items-center justify-center border-2 transition-all ${isSpeaking || isLiveMode ? 'border-white scale-110' : 'border-white/20'}`}>
+          <div className={`relative w-12 h-12 rounded-full ${carnevalMode ? 'bg-orange-900' : 'bg-blue-900'} flex items-center justify-center border-2 transition-all ${isSpeaking || isLiveMode ? 'border-white scale-110 shadow-[0_0_15px_rgba(255,255,255,0.5)]' : 'border-white/20'}`}>
             <WaiterAvatar className="w-9 h-9 mt-1" carnevalMode={carnevalMode} />
             {(isSpeaking || isLiveMode) && (
                <div className={`absolute inset-0 rounded-full border-2 ${carnevalMode ? 'border-orange-400' : 'border-blue-400'} animate-ping opacity-20`} />
@@ -333,7 +381,7 @@ export const ChatBot: React.FC<Props> = ({ menu, posts, language, autoStart = fa
               type="text" 
               value={input} 
               onChange={(e) => setInput(e.target.value)} 
-              placeholder={t.pasqualePlaceholder} 
+              placeholder={t.soraPlaceholder} 
               className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-blue-500 transition-all placeholder:text-white/20" 
             />
             <button type="submit" disabled={!input.trim() || isLoading} className={`${carnevalMode ? 'bg-orange-600' : 'bg-blue-700'} p-3 rounded-xl text-white disabled:opacity-50 transition-colors shadow-lg`}>

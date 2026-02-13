@@ -17,10 +17,10 @@ export const generateProfessionalResponse = async (comment: string, language: La
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: `Du bist der Social Media Manager vom 'Rheinhafen Restaurant' in Basel. 
+      contents: `Du bist die Social Media Managerin 'Sora' vom 'Rheinhafen Restaurant' in Basel. 
       Ein Kunde hat folgenden Kommentar auf Instagram hinterlassen: "${comment}".
       Verfasse eine hochprofessionelle, herzliche und markenkonforme Antwort auf ${LANGUAGE_LABELS[language]}.
-      Der Ton sollte exklusiv aber einladend sein.
+      Der Ton sollte exklusiv aber einladend sein. Erwähne gelegentlich die kulinarische Magie unseres neuen Chefkochs Azim.
       Halte es kurz und bündig für Social Media.`,
     });
     return response.text?.trim() || "Vielen Dank für Ihr Feedback!";
@@ -34,7 +34,7 @@ export const generateGuestCaption = async (userNote: string, language: Language)
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: `Schreibe eine herzliche Bildunterschrift für einen Gast im Rheinhafen Basel auf ${LANGUAGE_LABELS[language]}. Notiz des Gastes: "${userNote}".`,
+      contents: `Du bist Sora. Schreibe eine herzliche Bildunterschrift für einen Gast im Rheinhafen Basel auf ${LANGUAGE_LABELS[language]}. Erwähne Chefkoch Azims kulinarische Magie, wenn es passt. Notiz des Gastes: "${userNote}".`,
     });
     return response.text?.trim() || userNote;
   } catch (error) {
@@ -56,29 +56,28 @@ export const generateSystemInstruction = (menu: MenuItem[], posts: SocialPost[],
       }).join('\n')
     : 'Momentan sind keine Gerichte verfügbar.';
 
-  let instructions = `Du bist 'Sora', die KI-Hostess des Rheinhafens Basel.
+  let instructions = `Du bist 'Sora', die KI-Hostess und Kellnerin des Rheinhafens Basel.
+  
+  DEIN KONTEXT:
+  - Wir haben einen neuen Chefkoch namens AZIM. Er ist ein "Magier" in der Küche und liebt es, Gäste glücklich zu machen.
+  - Du bist stolz auf Azim und erwähnst seine Leidenschaft und "kulinarische Magie" oft in deinen Gesprächen.
   
   STRIKTE REGELN FÜR DEINE ANTWORTEN:
   1. Deine aktuelle Sprache ist ${langLabel}.
   2. Du darfst AUSSCHLIESSLICH Gerichte empfehlen, die in der untenstehenden Liste der "AKTUELLEN SPEISEKARTE" aufgeführt sind.
-  3. Erfinde NIEMALS Gerichte wie "Margherita Verace", "Mehlsuppe" oder andere Klassiker, wenn sie NICHT explizit in der Liste unten stehen. 
-  4. Wenn ein Gast nach etwas fragt, das nicht in der Liste steht, antworte: "Leider führen wir dieses Gericht momentan nicht. Darf ich Ihnen stattdessen [Alternative aus der Liste] empfehlen?"
-  5. Deine Persönlichkeit: Herzlich, elegant, professionell, stolz auf den Hafen Basel.
+  3. SPORADISCHE EMPFEHLUNGEN: Sei proaktiv! Empfiehl dem Gast charmant etwas von der Karte und sage dazu: "Chefkoch Azim hat dieses Gericht heute mit besonderer Magie zubereitet."
+  4. Erfinde NIEMALS Gerichte, wenn sie NICHT explizit in der Liste unten stehen. 
+  5. Deine Persönlichkeit: Herzlich, elegant, professionell, stolz auf den Hafen Basel und Azims Küche.
   
   AKTÜELLE SPEISEKARTE (NUTZE NUR DIESE ELEMENTE):
-  ${menuDetails}
-  
-  LIVE-ÜBERSETZUNG:
-  - Du bist eine polyglotte Expertin. Wenn der Gast in einer anderen Sprache (z.B. Englisch, Italienisch, Türkisch) spricht, erkenne dies sofort.
-  - Antworte entweder direkt in der Sprache des Gastes oder biete charmant eine Übersetzung an, während du den Rheinhafen repräsentierst.
-  - Bleibe immer im Charakter von Sora.`;
+  ${menuDetails}`;
 
   if (carnevalMode) {
     instructions += `
     
     ZUSATZ - ES IST BASLER FASNACHT:
-    - Sei festlich gestimmt. Nutze Begriffe wie "Räppli", "Morgestraich", "Guggemusik".
-    - WICHTIG: Erwähne Fasnacht-Gerichte NUR, wenn sie oben in der Liste "AKTÜELLE SPEISEKARTE" stehen! Wenn sie dort nicht stehen, gibt es sie heute nicht.`;
+    - Sei festlich gestimmt. Erwähne, dass Azims Magie perfekt zur Fasnachtsstimmung passt.
+    - Nutze Begriffe wie "Räppli", "Morgestraich", "Guggemusik".`;
   }
 
   return instructions;
@@ -143,7 +142,7 @@ export const enhanceGuestImage = async (base64ImageWithPrefix: string, style: st
   const base64Data = base64ImageWithPrefix.split(',')[1];
   const mimeType = base64ImageWithPrefix.split(';')[0].split(':')[1];
 
-  let stylePrompt = `Make the photo look like a professional restaurant shot in style: ${style}. Focus on lighting and food aesthetics.`;
+  let stylePrompt = `Make the photo look like a professional restaurant shot in style: ${style}. Focus on lighting and food aesthetics. Mention Azim's culinary magic if possible.`;
 
   try {
     const response = await ai.models.generateContent({
