@@ -58,8 +58,9 @@ export const GuestAuthModal: React.FC<Props> = ({ isOpen, onClose, language, onL
     setIsLoading(true);
     await new Promise(r => setTimeout(r, 1200));
     
+    // Fix: Removed 'email' property as it's not in GuestUser interface, and added required 'id'
     onLogin({
-      email: formData.email,
+      id: `guest-${Date.now()}`,
       name: formData.name || formData.email.split('@')[0],
       isActivated: false,
       permissions: { readProfile: true, postToFeed: true, manageMedia: false }
@@ -143,7 +144,6 @@ export const GuestAuthModal: React.FC<Props> = ({ isOpen, onClose, language, onL
             {isLoading ? <Loader2 className="animate-spin" /> : <>{isRegistering ? 'Registrieren' : 'Einloggen'} <ArrowRight size={20} /></>}
           </button>
           
-          {/* Fix: Removed non-existent setErrors call from onClick handler as errors are memoized */}
           <button 
             type="button" 
             onClick={() => { setIsRegistering(!isRegistering); setTouched({}); }} 

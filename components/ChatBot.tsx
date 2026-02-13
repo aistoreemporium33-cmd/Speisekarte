@@ -104,7 +104,8 @@ export const ChatBot: React.FC<Props> = ({ menu, posts, language, autoStart = fa
     if (audioData) {
       const ctx = outputAudioContextRef.current!;
       nextStartTimeRef.current = Math.max(nextStartTimeRef.current, ctx.currentTime);
-      const buffer = await ctx.decodeAudioData(audioData.buffer);
+      // FIX: Use custom PCM decoder helper instead of native AudioContext.decodeAudioData
+      const buffer = await decodeAudioData(audioData, ctx, 24000, 1);
       const source = ctx.createBufferSource();
       source.buffer = buffer;
       source.connect(ctx.destination);

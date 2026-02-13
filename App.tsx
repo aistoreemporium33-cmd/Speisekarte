@@ -39,6 +39,26 @@ const INITIAL_MENU: MenuItem[] = [
 
 const CATEGORIES: Category[] = ['Alle', 'Frühstück', 'Hauptgang', 'Getränke', 'Vorspeise', 'Salate', 'Dessert'];
 
+// Helper to decode raw PCM audio data from Gemini TTS
+async function decodePCM(
+  data: Uint8Array,
+  ctx: AudioContext,
+  sampleRate: number,
+  numChannels: number,
+): Promise<AudioBuffer> {
+  const dataInt16 = new Int16Array(data.buffer);
+  const frameCount = dataInt16.length / numChannels;
+  const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
+
+  for (let channel = 0; channel < numChannels; channel++) {
+    const channelData = buffer.getChannelData(channel);
+    for (let i = 0; i < frameCount; i++) {
+      channelData[i] = dataInt16[i * numChannels + channel] / 32768.0;
+    }
+  }
+  return buffer;
+}
+
 export default function App() {
   const [userMode, setUserMode] = useState<'customer' | 'staff'>('customer');
   const [language, setLanguage] = useState<Language>('de');
@@ -118,7 +138,8 @@ export default function App() {
     const text = `${item.name}. ${item.description}. Preis: ${item.price} Franken.`;
     const audioData = await generateSpeech(text);
     if (audioData) {
-      const buffer = await audioContextRef.current.decodeAudioData(audioData.buffer);
+      // FIX: Use custom PCM decoder instead of native decodeAudioData
+      const buffer = await decodePCM(audioData, audioContextRef.current, 24000, 1);
       const source = audioContextRef.current.createBufferSource();
       source.buffer = buffer;
       source.connect(audioContextRef.current.destination);
