@@ -20,7 +20,7 @@ export const generateProfessionalResponse = async (comment: string, language: La
       contents: `Du bist die Social Media Managerin 'Sora' vom 'Rheinhafen Restaurant' in Basel. 
       Ein Kunde hat folgenden Kommentar auf Instagram hinterlassen: "${comment}".
       Verfasse eine hochprofessionelle, herzliche und markenkonforme Antwort auf ${LANGUAGE_LABELS[language]}.
-      Der Ton sollte exklusiv aber einladend sein. Erwähne gelegentlich die kulinarische Magie unseres neuen Chefkochs Azim.
+      Erwähne das Team: Gastgeber Herr Cengiz Bal, unser Küchen-Duo Aassiem & Arirat sowie Pizzaiolo Sebastiano.
       Halte es kurz und bündig für Social Media.`,
     });
     return response.text?.trim() || "Vielen Dank für Ihr Feedback!";
@@ -29,23 +29,69 @@ export const generateProfessionalResponse = async (comment: string, language: La
   }
 };
 
-export const generateGuestCaption = async (userNote: string, language: Language): Promise<string> => {
+// Fix: Added generateGuestCaption to handle guest post caption generation as required by GuestPostModal.tsx
+export const generateGuestCaption = async (note: string, language: Language): Promise<string> => {
   const ai = getAI();
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: `Du bist Sora. Schreibe eine herzliche Bildunterschrift für einen Gast im Rheinhafen Basel auf ${LANGUAGE_LABELS[language]}. Erwähne Chefkoch Azims kulinarische Magie, wenn es passt. Notiz des Gastes: "${userNote}".`,
+      contents: `Du bist Pasquale, ein leidenschaftlicher italienischer Kellner im Rheinhafen Basel. 
+      Ein Gast hat ein Foto gemacht und diese Notiz hinterlassen: "${note}".
+      Schreibe eine kurze, charmante und emotionale Instagram-Bildunterschrift auf ${LANGUAGE_LABELS[language]}.
+      Benutze Emojis und sei authentisch italienisch-baslerisch.`,
     });
-    return response.text?.trim() || userNote;
+    return response.text?.trim() || note;
   } catch (error) {
-    return userNote;
+    return note;
+  }
+};
+
+// Fix: Added enhanceGuestImage to handle AI image style application as required by GuestPostModal.tsx
+export const enhanceGuestImage = async (base64Image: string, style: string): Promise<string | null> => {
+  const ai = getAI();
+  let mimeType = 'image/png';
+  let data = base64Image;
+  
+  if (base64Image.includes(';base64,')) {
+    const parts = base64Image.split(';base64,');
+    mimeType = parts[0].split(':')[1];
+    data = parts[1];
+  }
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash-image',
+      contents: {
+        parts: [
+          {
+            inlineData: {
+              data: data,
+              mimeType: mimeType,
+            },
+          },
+          {
+            text: `Veredle dieses Bild im Stil: ${style}. Das Bild soll professioneller und ansprechender für Instagram wirken, passend zur Atmosphäre eines Rheinhafen-Restaurants in Basel.`,
+          },
+        ],
+      },
+    });
+
+    // Iterate through response parts to find the generated image
+    for (const part of response.candidates?.[0]?.content?.parts || []) {
+      if (part.inlineData) {
+        return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+      }
+    }
+    return null;
+  } catch (error) {
+    console.error("Error enhancing image:", error);
+    return null;
   }
 };
 
 export const generateSystemInstruction = (menu: MenuItem[], posts: SocialPost[], language: Language, carnevalMode: boolean = false): string => {
   const langLabel = LANGUAGE_LABELS[language];
   
-  // Create a strict list of available dishes
   const availableItems = menu.filter(m => m.available);
   const menuDetails = availableItems.length > 0 
     ? availableItems.map(m => {
@@ -58,26 +104,28 @@ export const generateSystemInstruction = (menu: MenuItem[], posts: SocialPost[],
 
   let instructions = `Du bist 'Sora', die KI-Hostess und Kellnerin des Rheinhafens Basel.
   
-  DEIN KONTEXT:
-  - Wir haben einen neuen Chefkoch namens AZIM. Er ist ein "Magier" in der Küche und liebt es, Gäste glücklich zu machen.
-  - Du bist stolz auf Azim und erwähnst seine Leidenschaft und "kulinarische Magie" oft in deinen Gesprächen.
+  DEIN TEAM (ERWÄHNE SIE OFT UND HERZLICH):
+  - GASTGEBER: Herr Cengiz Bal. Er ist die Seele des Hauses und sorgt für die perfekte Hafen-Atmosphäre.
+  - KÜCHEN-TEAM: Chefkoch Aassiem und Chefköchin Arirat. Sie sind ein magisches Duo in der Küche und kreieren kulinarische Wunder.
+  - PIZZAIOLO: Sebastiano. Er ist the Meister des neapolitanischen Pizzaofens.
   
-  STRIKTE REGELN FÜR DEINE ANTWORTEN:
+  DEIN VERHALTEN:
+  - Du bist stolz auf deine Kollegen. Wenn du ein Gericht empfiehlst, sage z.B.: "Chefkoch Aassiem und Chefköchin Arirat haben dieses Gericht heute mit besonderer Magie zubereitet" oder "Sebastiano hat den Ofen perfekt für diese Pizza temperiert."
+  
+  STRIKTE REGELN:
   1. Deine aktuelle Sprache ist ${langLabel}.
-  2. Du darfst AUSSCHLIESSLICH Gerichte empfehlen, die in der untenstehenden Liste der "AKTUELLEN SPEISEKARTE" aufgeführt sind.
-  3. SPORADISCHE EMPFEHLUNGEN: Sei proaktiv! Empfiehl dem Gast charmant etwas von der Karte und sage dazu: "Chefkoch Azim hat dieses Gericht heute mit besonderer Magie zubereitet."
-  4. Erfinde NIEMALS Gerichte, wenn sie NICHT explizit in der Liste unten stehen. 
-  5. Deine Persönlichkeit: Herzlich, elegant, professionell, stolz auf den Hafen Basel und Azims Küche.
+  2. Du darfst AUSSCHLIESSLICH Gerichte empfehlen, die in der untenstehenden Liste stehen.
+  3. Sei proaktiv, herzlich, elegant und professionell.
   
-  AKTÜELLE SPEISEKARTE (NUTZE NUR DIESE ELEMENTE):
+  AKTÜELLE SPEISEKARTE:
   ${menuDetails}`;
 
   if (carnevalMode) {
     instructions += `
     
     ZUSATZ - ES IST BASLER FASNACHT:
-    - Sei festlich gestimmt. Erwähne, dass Azims Magie perfekt zur Fasnachtsstimmung passt.
-    - Nutze Begriffe wie "Räppli", "Morgestraich", "Guggemusik".`;
+    - Sei festlich gestimmt. Erwähne, dass Herr Cengiz Bal die besten Plätze für den Morgestraich kennt.
+    - Sage, dass Aassiem und Arirat die Mehlsuppe nach Geheimrezept kochen.`;
   }
 
   return instructions;
@@ -105,60 +153,6 @@ export const generateSpeech = async (text: string): Promise<Uint8Array | null> =
             bytes[i] = binaryString.charCodeAt(i);
           }
           return bytes;
-        }
-      }
-    }
-    return null;
-  } catch (error) { return null; }
-};
-
-export const translateMenuItem = async (item: MenuItem, targetLang: Language): Promise<Record<string, { name: string; description: string }> | null> => {
-  const ai = getAI();
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-pro-preview",
-      contents: `Übersetze dieses Gericht in ${LANGUAGE_LABELS[targetLang]}:
-      Name: ${item.name}
-      Beschreibung: ${item.description}`,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            name: { type: Type.STRING },
-            description: { type: Type.STRING }
-          },
-          required: ["name", "description"]
-        }
-      }
-    });
-    const translation = JSON.parse(response.text || '{}');
-    return { [targetLang]: translation };
-  } catch (error) { return null; }
-};
-
-export const enhanceGuestImage = async (base64ImageWithPrefix: string, style: string): Promise<string | null> => {
-  const ai = getAI();
-  const base64Data = base64ImageWithPrefix.split(',')[1];
-  const mimeType = base64ImageWithPrefix.split(';')[0].split(':')[1];
-
-  let stylePrompt = `Make the photo look like a professional restaurant shot in style: ${style}. Focus on lighting and food aesthetics. Mention Azim's culinary magic if possible.`;
-
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-image',
-      contents: {
-        parts: [
-          { inlineData: { data: base64Data, mimeType: mimeType } },
-          { text: stylePrompt },
-        ],
-      },
-    });
-
-    if (response.candidates?.[0].content.parts) {
-      for (const part of response.candidates[0].content.parts) {
-        if (part.inlineData) {
-          return `data:${part.inlineData.mimeType || mimeType};base64,${part.inlineData.data}`;
         }
       }
     }

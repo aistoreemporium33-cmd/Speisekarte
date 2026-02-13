@@ -16,28 +16,43 @@ import { generateSpeech } from './services/geminiService';
 import { Settings, ArrowRight, Volume2, Plus, Sparkles, Instagram, Utensils, Calendar, Coffee, Wine, Pizza, Mail } from 'lucide-react';
 
 const INITIAL_MENU: MenuItem[] = [
-  // PIZZAS
-  { id: 'p1', name: "Margherita", description: "Tomaten, Mozzarella, Basilikum", price: 15.00, category: 'Hauptgang', available: true, image: "https://images.unsplash.com/photo-1574071318508-1cdbad80ad38?auto=format&fit=crop&q=80&w=800", translations: {} },
-  { id: 'p2', name: "Vegetarisch", description: "Tomaten, Mozzarella, Frisches Saisonales Gemüse", price: 18.00, category: 'Hauptgang', available: true, image: "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&q=80&w=800", translations: {} },
-  { id: 'p3', name: "Funghi", description: "Tomaten, Mozzarella, Champignons", price: 18.00, category: 'Hauptgang', available: true, image: "https://images.unsplash.com/photo-1604908814433-d443e0173c54?auto=format&fit=crop&q=80&w=800", translations: {} },
-  { id: 'p4', name: "Napoli", description: "Tomaten, Mozzarella, Kapern, Sardellen", price: 18.50, category: 'Hauptgang', available: true, image: "https://images.unsplash.com/photo-1594007654729-407eedc4be65?auto=format&fit=crop&q=80&w=800", translations: {} },
-  { id: 'p5', name: "Salami", description: "Tomaten, Mozzarella, Salami", price: 18.50, category: 'Hauptgang', available: true, image: "https://images.unsplash.com/photo-1628840042765-356cda07504e?auto=format&fit=crop&q=80&w=800", translations: {} },
-  { id: 'p6', name: "Quatro Formaggi", description: "Tomaten, Mozzarella, Gorgonzola, Taleggio, Parmesan", price: 20.00, category: 'Hauptgang', available: true, image: "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&q=80&w=800", translations: {} },
-  { id: 'p7', name: "PIZZA RHEINHAFEN", description: "Tomaten, Mozzarella, Champignons, Oliven, Artischocken, Büffelmozzarella, Rucola", price: 24.00, category: 'Hauptgang', available: true, image: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?auto=format&fit=crop&q=80&w=800", translations: {} },
+  // SPARGEL SAISON
+  { id: 'sp1', name: "Spargel Teller Classic", description: "Weisser Spargel mit Sauce Hollandaise dazu neue Kartoffeln", price: 29.00, category: 'Saison', available: true, image: "https://images.unsplash.com/photo-1515471209610-dae1c92d81fe?auto=format&fit=crop&q=80&w=800" },
+  { id: 'sp2', name: "Spargel & Kalb Deluxe", description: "Weisser Spargel mit Sauce Hollandaise dazu Kalbsschnitzel natur", price: 42.00, category: 'Saison', available: true, image: "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&q=80&w=800" },
+  { id: 'sp3', name: "Spargel & Poulet Light", description: "Grüner Spargel mit Pouletbrust vom Grill an Weisswein-Zitronensauce", price: 34.00, category: 'Saison', available: true, image: "https://images.unsplash.com/photo-1432139555190-58524dae6a55?auto=format&fit=crop&q=80&w=800" },
+  { id: 'sp4', name: "Spargel & Lachs", description: "Weisser Spargel mit gebratenem Lachs an Zitronen-Hollandaise", price: 39.00, category: 'Saison', available: true, image: "https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&q=80&w=800" },
+  { id: 'sp5', name: "Spargel Pasta", description: "Spaghetti mit grünem Spargel & Cherry-Tomaten an Basilikum-Pesto", price: 24.00, category: 'Saison', available: true, image: "https://images.unsplash.com/photo-1473093226795-af9932fe5856?auto=format&fit=crop&q=80&w=800" },
+  { id: 'sp6', name: "Frühlingssalat", description: "Bunter Blattsalat mit Spargel, Erdbeeren, Nüssen & Hausdressing", price: 15.00, category: 'Salate', available: true, image: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&q=80&w=800" },
+
+  // VOM RIND
+  { id: 'r1', name: "Entrecôte vom Grill", description: "mit Café de Paris", price: 32.00, category: 'Hauptgang', available: true, image: "https://images.unsplash.com/photo-1546241072-48010ad28c2c?auto=format&fit=crop&q=80&w=800" },
+  { id: 'r2', name: "Falsche Schnecke vom Grill", description: "zart gegrillt", price: 28.00, category: 'Hauptgang', available: true, image: "https://images.unsplash.com/photo-1558030006-450675393462?auto=format&fit=crop&q=80&w=800" },
+
+  // VOM LAMM
+  { id: 'l1', name: "Lammkotelette vom Grill", description: "saftig gegrillte Lammkotelettes", price: 32.00, category: 'Hauptgang', available: true, image: "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&q=80&w=800" },
+  { id: 'l2', name: "Lammsteak vom Grill", description: "zartes Lammsteak perfekt medium serviert", price: 32.00, category: 'Hauptgang', available: true, image: "https://images.unsplash.com/photo-1603048297172-c92544798d5a?auto=format&fit=crop&q=80&w=800" },
+
+  // VOM KALB
+  { id: 'k1', name: "Kalbfleisch Zürcher Art", description: "fein geschnitten nach Zürcher Art mit Rösti", price: 30.00, category: 'Hauptgang', available: true, image: "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?auto=format&fit=crop&q=80&w=800" },
+  { id: 'k2', name: "Kalbschnitzel paniert", description: "mit Pommes Frites", price: 30.00, category: 'Hauptgang', available: true, image: "https://images.unsplash.com/photo-1599921841143-819065a55cc6?auto=format&fit=crop&q=80&w=800" },
+  { id: 'k3', name: "Kalbs Cordon Bleu", description: "mit Pommes Frites", price: 34.00, category: 'Hauptgang', available: true, image: "https://images.unsplash.com/photo-1626814026160-2237a95fc5a0?auto=format&fit=crop&q=80&w=800" },
+
+  // VOM POULET
+  { id: 'po1', name: "Poulet Cordon Bleu", description: "mit Pommes Frites", price: 24.00, category: 'Hauptgang', available: true, image: "https://images.unsplash.com/photo-1562967914-6c827383d944?auto=format&fit=crop&q=80&w=800" },
+
+  // VOM FISCH
+  { id: 'fi1', name: "Eglifilet Müllerin Art", description: "mit Butterreis & Spinat", price: 31.00, category: 'Hauptgang', available: true, image: "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?auto=format&fit=crop&q=80&w=800" },
+  { id: 'fi2', name: "Zanderfilet Steak", description: "gebraten mit Buttergemüse an Weisswein-Zitronensauce", price: 31.00, category: 'Hauptgang', available: true, image: "https://images.unsplash.com/photo-1551248429-42207185c7d8?auto=format&fit=crop&q=80&w=800" },
+
+  // PIZZAS (Sebastiano's Stolz)
+  { id: 'p1', name: "Margherita", description: "Tomaten, Mozzarella, Basilikum", price: 15.00, category: 'Hauptgang', available: true, image: "https://images.unsplash.com/photo-1574071318508-1cdbad80ad38?auto=format&fit=crop&q=80&w=800" },
+  { id: 'p7', name: "PIZZA RHEINHAFEN", description: "Tomaten, Mozzarella, Champignons, Oliven, Artischocken, Büffelmozzarella, Rucola", price: 24.00, category: 'Hauptgang', available: true, image: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?auto=format&fit=crop&q=80&w=800" },
   
   // SPEZIALITÄTEN
-  { id: 's1', name: "Basler Mehlsuppe", description: "Traditionelle Fasnachtssuppe mit geröstetem Mehl und Parmesan", price: 12.50, category: 'Vorspeise', available: true, image: "https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&q=80&w=800", translations: {} },
-  { id: 's2', name: "Käsewähe", description: "Hausgemachte Basler Käsewähe, warm serviert", price: 9.50, category: 'Vorspeise', available: true, image: "https://images.unsplash.com/photo-1621841957884-1210fe19d66d?auto=format&fit=crop&q=80&w=800", translations: {} },
-
-  // FRÜHSTÜCK
-  { id: 'f1', name: "Kalte Platte", description: "Weichkäse, Hartkäse, Salami, Hinterschinken, Roschinken, Ei, Gurke, Orangen, Oliven, Gonfi. Passend zu Wein.", price: 30.00, category: 'Frühstück', available: true, image: "https://images.unsplash.com/photo-1540914124281-342587941389?auto=format&fit=crop&q=80&w=800", translations: {} },
-  
-  // GETRÄNKE
-  { id: 'g1', name: "Kaffe Creme", description: "Frisch gebrühter Kaffee", price: 4.00, category: 'Getränke', available: true, image: "https://images.unsplash.com/photo-1541167760496-162955ed8a9f?auto=format&fit=crop&q=80&w=800", translations: {} },
-  { id: 'g4', name: "Feldschlösschen 33cl", description: "Original Bier aus der Schweiz", price: 5.70, category: 'Getränke', available: true, image: "https://images.unsplash.com/photo-1618885472179-5e474019f2a9?auto=format&fit=crop&q=80&w=800", translations: {} }
+  { id: 's1', name: "Basler Mehlsuppe", description: "Traditionelle Fasnachtssuppe mit geröstetem Mehl und Parmesan (Aassiem's Spezialrezept)", price: 12.50, category: 'Vorspeise', available: true, image: "https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&q=80&w=800" }
 ];
 
-const CATEGORIES: Category[] = ['Alle', 'Frühstück', 'Hauptgang', 'Getränke', 'Vorspeise', 'Salate', 'Dessert'];
+const CATEGORIES: Category[] = ['Alle', 'Saison', 'Hauptgang', 'Getränke', 'Vorspeise', 'Salate', 'Dessert', 'Frühstück'];
 
 // Helper to decode raw PCM audio data from Gemini TTS
 async function decodePCM(
@@ -138,7 +153,6 @@ export default function App() {
     const text = `${item.name}. ${item.description}. Preis: ${item.price} Franken.`;
     const audioData = await generateSpeech(text);
     if (audioData) {
-      // FIX: Use custom PCM decoder instead of native decodeAudioData
       const buffer = await decodePCM(audioData, audioContextRef.current, 24000, 1);
       const source = audioContextRef.current.createBufferSource();
       source.buffer = buffer;
