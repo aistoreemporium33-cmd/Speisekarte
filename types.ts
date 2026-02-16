@@ -1,9 +1,10 @@
 
 export type Language = 'de' | 'en' | 'fr' | 'it' | 'tr';
 
-export type Category = 'Saison' | 'Vorspeise' | 'Salate' | 'Hauptgang' | 'Dessert' | 'Getränke' | 'Frühstück' | 'Alle';
+export type Category = 'Wochenmenü' | 'Saison' | 'Vorspeise' | 'Salate' | 'Hauptgang' | 'Dessert' | 'Getränke' | 'Frühstück' | 'Alle';
 
 export const DEFAULT_CATEGORIES: Category[] = [
+  'Wochenmenü',
   'Saison',
   'Frühstück',
   'Vorspeise',
