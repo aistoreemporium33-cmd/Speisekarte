@@ -20,6 +20,7 @@ interface Props {
   language: Language;
   autoStart?: boolean;
   carnevalMode?: boolean;
+  easterMode?: boolean;
 }
 
 // Audio Utils for PCM Data Handling
@@ -61,7 +62,7 @@ async function decodeAudioData(
   return buffer;
 }
 
-export const ChatBot: React.FC<Props> = ({ menu, posts, language, autoStart = false, carnevalMode = false }) => {
+export const ChatBot: React.FC<Props> = ({ menu, posts, language, autoStart = false, carnevalMode = false, easterMode = false }) => {
   const t = UI_STRINGS[language];
   const [isOpen, setIsOpen] = useState(false);
   const [isLiveMode, setIsLiveMode] = useState(false);
@@ -125,7 +126,18 @@ export const ChatBot: React.FC<Props> = ({ menu, posts, language, autoStart = fa
   useEffect(() => {
     if (autoStart && !greetedRef.current) {
       greetedRef.current = true;
-      const greeting = carnevalMode ? t.soraGreetingCarneval : t.soraGreeting;
+      setIsOpen(true); // Open chat window immediately
+      
+      const isMonday = new Date().getDay() === 1;
+      let greeting = t.soraGreeting;
+      
+      if (isMonday) {
+        greeting = "Sawasdee! Heute ist Thai-Montag im Rheinhafen! 🌸 Unsere wunderbare Arirat hat heute authentische thailändische Köstlichkeiten wie Panang Curry oder knusprige Ente für dich gezaubert. Und ganz neu für unsere kleinen Gäste: Unser SCHNIPO Kindermenü mit frisch paniertem Poulet-Schnitzel und Pommes! Hast du Lust auf einen Hauch von Thailand oder etwas für die Kids?";
+      } else if (easterMode) {
+        greeting = "Frohe Ostern! Ich bin Sora. Hast du Lust auf unsere Oster-Spezialitäten oder suchst du noch nach dem perfekten Tisch für den Osterbrunch?";
+      } else if (carnevalMode) {
+        greeting = t.soraGreetingCarneval;
+      }
       
       setMessages([{
         id: 'welcome-sora',
@@ -133,12 +145,10 @@ export const ChatBot: React.FC<Props> = ({ menu, posts, language, autoStart = fa
         text: greeting
       }]);
 
-      // Speak immediately
-      setTimeout(() => {
-        speakText(greeting);
-      }, 500);
+      // Speak immediately - initAudio is called inside speakText
+      speakText(greeting);
     }
-  }, [autoStart, carnevalMode, t]);
+  }, [autoStart, carnevalMode, easterMode, t]);
 
   useEffect(() => {
     if (isOpen && !isLiveMode) {
@@ -146,11 +156,11 @@ export const ChatBot: React.FC<Props> = ({ menu, posts, language, autoStart = fa
       chatSessionRef.current = ai.chats.create({
         model: 'gemini-3-flash-preview',
         config: {
-          systemInstruction: generateSystemInstruction(menu, posts, language, carnevalMode),
+          systemInstruction: generateSystemInstruction(menu, posts, language, carnevalMode, easterMode),
         }
       });
     }
-  }, [isOpen, isLiveMode, menu, posts, language, carnevalMode, t]);
+  }, [isOpen, isLiveMode, menu, posts, language, carnevalMode, easterMode, t]);
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
@@ -263,7 +273,7 @@ export const ChatBot: React.FC<Props> = ({ menu, posts, language, autoStart = fa
         speechConfig: {
           voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } }
         },
-        systemInstruction: generateSystemInstruction(menu, posts, language, carnevalMode)
+        systemInstruction: generateSystemInstruction(menu, posts, language, carnevalMode, easterMode)
       }
     });
   };
@@ -302,9 +312,9 @@ export const ChatBot: React.FC<Props> = ({ menu, posts, language, autoStart = fa
     return (
       <button 
         onClick={() => { initAudio(); setIsOpen(true); }} 
-        className={`fixed bottom-6 right-6 w-16 h-16 rounded-full ${carnevalMode ? 'bg-orange-600' : 'bg-blue-700'} shadow-2xl flex items-center justify-center hover:scale-110 transition-all z-50 border-2 border-white/20`}
+        className={`fixed bottom-6 right-6 w-16 h-16 rounded-full ${easterMode ? 'bg-green-600' : (carnevalMode ? 'bg-orange-600' : 'bg-blue-700')} shadow-2xl flex items-center justify-center hover:scale-110 transition-all z-50 border-2 border-white/20`}
       >
-        <WaiterAvatar className={`w-12 h-12 ${isSpeaking ? 'animate-pulse scale-110' : ''}`} carnevalMode={carnevalMode} />
+        <WaiterAvatar className={`w-12 h-12 ${isSpeaking ? 'animate-pulse scale-110' : ''}`} carnevalMode={carnevalMode} easterMode={easterMode} />
         <div className="absolute -top-1 -right-1 animate-pulse">
            <Sparkles size={16} className="text-yellow-400" />
         </div>
@@ -313,18 +323,18 @@ export const ChatBot: React.FC<Props> = ({ menu, posts, language, autoStart = fa
   }
 
   return (
-    <div className={`fixed bottom-6 right-6 w-[95vw] md:w-96 h-[600px] bg-[#001C30] rounded-[2.5rem] shadow-2xl flex flex-col z-50 overflow-hidden border ${carnevalMode ? 'border-orange-500/30' : 'border-blue-500/30'} animate-in slide-in-from-bottom-4`}>
-      <div className={`${carnevalMode ? 'bg-orange-600' : 'bg-blue-700'} p-5 flex justify-between items-center text-white shrink-0 shadow-lg`}>
+    <div className={`fixed bottom-6 right-6 w-[95vw] md:w-96 h-[600px] bg-[#001C30] rounded-[2.5rem] shadow-2xl flex flex-col z-50 overflow-hidden border ${easterMode ? 'border-green-500/30' : (carnevalMode ? 'border-orange-500/30' : 'border-blue-500/30')} animate-in slide-in-from-bottom-4`}>
+      <div className={`${easterMode ? 'bg-green-600' : (carnevalMode ? 'bg-orange-600' : 'bg-blue-700')} p-5 flex justify-between items-center text-white shrink-0 shadow-lg`}>
         <div className="flex items-center gap-3">
-          <div className={`relative w-12 h-12 rounded-full ${carnevalMode ? 'bg-orange-900' : 'bg-blue-900'} flex items-center justify-center border-2 transition-all ${isSpeaking || isLiveMode ? 'border-white scale-110 shadow-[0_0_15px_rgba(255,255,255,0.5)]' : 'border-white/20'}`}>
-            <WaiterAvatar className="w-9 h-9 mt-1" carnevalMode={carnevalMode} />
+          <div className={`relative w-12 h-12 rounded-full ${easterMode ? 'bg-green-900' : (carnevalMode ? 'bg-orange-900' : 'bg-blue-900')} flex items-center justify-center border-2 transition-all ${isSpeaking || isLiveMode ? 'border-white scale-110 shadow-[0_0_15px_rgba(255,255,255,0.5)]' : 'border-white/20'}`}>
+            <WaiterAvatar className="w-9 h-9 mt-1" carnevalMode={carnevalMode} easterMode={easterMode} />
             {(isSpeaking || isLiveMode) && (
-               <div className={`absolute inset-0 rounded-full border-2 ${carnevalMode ? 'border-orange-400' : 'border-blue-400'} animate-ping opacity-20`} />
+               <div className={`absolute inset-0 rounded-full border-2 ${easterMode ? 'border-green-400' : (carnevalMode ? 'border-orange-400' : 'border-blue-400')} animate-ping opacity-20`} />
             )}
           </div>
           <div>
             <h3 className="font-black text-xs uppercase tracking-widest">Sora</h3>
-            <span className="text-[9px] opacity-70 uppercase font-bold">{isLiveMode ? 'Live Translator' : (carnevalMode ? 'Fasnacht-Host' : 'Gastgeberin')}</span>
+            <span className="text-[9px] opacity-70 uppercase font-bold">{isLiveMode ? 'Live Translator' : (easterMode ? 'Oster-Hostess' : (carnevalMode ? 'Fasnacht-Host' : 'Gastgeberin'))}</span>
           </div>
         </div>
         <div className="flex items-center gap-1">
@@ -336,7 +346,7 @@ export const ChatBot: React.FC<Props> = ({ menu, posts, language, autoStart = fa
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-blue-950/20 to-transparent custom-scrollbar">
         {messages.map((msg) => (
             <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-2`}>
-                <div className={`max-w-[85%] p-4 rounded-2xl text-[13px] leading-relaxed ${msg.role === 'user' ? (carnevalMode ? 'bg-orange-600 text-white rounded-tr-none' : 'bg-blue-600 text-white rounded-tr-none') : 'bg-blue-900/40 text-white/90 border border-white/5 rounded-tl-none shadow-sm'}`}>
+                <div className={`max-w-[85%] p-4 rounded-2xl text-[13px] leading-relaxed ${msg.role === 'user' ? (easterMode ? 'bg-green-600 text-white rounded-tr-none' : (carnevalMode ? 'bg-orange-600 text-white rounded-tr-none' : 'bg-blue-600 text-white rounded-tr-none')) : 'bg-blue-900/40 text-white/90 border border-white/5 rounded-tl-none shadow-sm'}`}>
                     {msg.text || (msg.isStreaming && <Loader2 size={14} className="animate-spin" />)}
                 </div>
             </div>
@@ -375,8 +385,8 @@ export const ChatBot: React.FC<Props> = ({ menu, posts, language, autoStart = fa
            </div>
         ) : (
           <form onSubmit={handleSend} className="flex gap-2">
-            <button type="button" onClick={toggleLiveMode} className={`p-4 rounded-xl border ${carnevalMode ? 'border-orange-500/20 hover:bg-orange-500/10' : 'border-blue-500/20 hover:bg-blue-500/10'} text-white transition-all`}>
-              <Mic size={20} className={carnevalMode ? 'text-orange-400' : 'text-blue-400'} />
+            <button type="button" onClick={toggleLiveMode} className={`p-4 rounded-xl border ${easterMode ? 'border-green-500/20 hover:bg-green-500/10' : (carnevalMode ? 'border-orange-500/20 hover:bg-orange-500/10' : 'border-blue-500/20 hover:bg-blue-500/10')} text-white transition-all`}>
+              <Mic size={20} className={easterMode ? 'text-green-400' : (carnevalMode ? 'text-orange-400' : 'text-blue-400')} />
             </button>
             <input 
               type="text" 
@@ -385,7 +395,7 @@ export const ChatBot: React.FC<Props> = ({ menu, posts, language, autoStart = fa
               placeholder={t.soraPlaceholder} 
               className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-blue-500 transition-all placeholder:text-white/20" 
             />
-            <button type="submit" disabled={!input.trim() || isLoading} className={`${carnevalMode ? 'bg-orange-600' : 'bg-blue-700'} p-3 rounded-xl text-white disabled:opacity-50 transition-colors shadow-lg`}>
+            <button type="submit" disabled={!input.trim() || isLoading} className={`${easterMode ? 'bg-green-600' : (carnevalMode ? 'bg-orange-600' : 'bg-blue-700')} p-3 rounded-xl text-white disabled:opacity-50 transition-colors shadow-lg`}>
               <Send size={18} />
             </button>
           </form>

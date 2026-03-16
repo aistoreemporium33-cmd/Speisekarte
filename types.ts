@@ -1,7 +1,7 @@
 
 export type Language = 'de' | 'en' | 'fr' | 'it' | 'tr';
 
-export type Category = 'Wochenmenü' | 'Saison' | 'Vorspeise' | 'Salate' | 'Hauptgang' | 'Dessert' | 'Getränke' | 'Frühstück' | 'Alle';
+export type Category = 'Wochenmenü' | 'Saison' | 'Vorspeise' | 'Salate' | 'Hauptgang' | 'Kinder' | 'Dessert' | 'Getränke' | 'Spirituosen' | 'Frühstück' | 'Alle';
 
 export const DEFAULT_CATEGORIES: Category[] = [
   'Wochenmenü',
@@ -10,8 +10,10 @@ export const DEFAULT_CATEGORIES: Category[] = [
   'Vorspeise',
   'Salate',
   'Hauptgang',
+  'Kinder',
   'Dessert',
-  'Getränke'
+  'Getränke',
+  'Spirituosen'
 ];
 
 export interface MenuItem {

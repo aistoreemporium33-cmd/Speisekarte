@@ -5,9 +5,10 @@ interface Props {
   className?: string;
   christmasMode?: boolean;
   carnevalMode?: boolean;
+  easterMode?: boolean;
 }
 
-export const WaiterAvatar: React.FC<Props> = ({ className = "w-10 h-10", christmasMode, carnevalMode }) => {
+export const WaiterAvatar: React.FC<Props> = ({ className = "w-10 h-10", christmasMode, carnevalMode, easterMode }) => {
   return (
     <svg viewBox="0 0 100 100" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
       <style>
@@ -20,11 +21,26 @@ export const WaiterAvatar: React.FC<Props> = ({ className = "w-10 h-10", christm
             0%, 100% { transform: rotate(0deg); }
             50% { transform: rotate(2deg); }
           }
+          @keyframes ear-twitch {
+            0%, 90%, 100% { transform: rotate(0deg); }
+            95% { transform: rotate(5deg); }
+          }
           .blink { animation: sora-blink 4s infinite; }
           .hair { transform-origin: top; animation: hair-sway 3s infinite ease-in-out; }
+          .ear { transform-origin: bottom; animation: ear-twitch 2s infinite ease-in-out; }
         `}
       </style>
       
+      {/* Easter Bunny Ears */}
+      {easterMode && (
+        <g className="ear">
+          <path d="M35 20 Q30 0 40 5 L45 25 Z" fill="#FFDFC4" stroke="#FFB6C1" strokeWidth="1" />
+          <path d="M37 18 Q34 5 40 8 L43 22 Z" fill="#FFB6C1" />
+          <path d="M65 20 Q70 0 60 5 L55 25 Z" fill="#FFDFC4" stroke="#FFB6C1" strokeWidth="1" />
+          <path d="M63 18 Q66 5 60 8 L57 22 Z" fill="#FFB6C1" />
+        </g>
+      )}
+
       {/* Sora's Long Hair (Back) */}
       <path d="M25 35 Q20 50 25 85 L75 85 Q80 50 75 35" fill="#3D2B1F" className="hair" />
       

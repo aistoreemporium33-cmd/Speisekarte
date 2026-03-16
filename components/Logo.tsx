@@ -6,9 +6,10 @@ interface Props {
   src?: string | null;
   newYearMode?: boolean;
   carnevalMode?: boolean;
+  easterMode?: boolean;
 }
 
-export const Logo: React.FC<Props> = ({ className = "h-16 w-16", src, newYearMode, carnevalMode }) => {
+export const Logo: React.FC<Props> = ({ className = "h-16 w-16", src, newYearMode, carnevalMode, easterMode }) => {
   if (src) {
     return (
       <div className={`relative flex items-center justify-center ${className}`}>
@@ -18,8 +19,8 @@ export const Logo: React.FC<Props> = ({ className = "h-16 w-16", src, newYearMod
   }
 
   // Colors based on mode
-  const primaryColor = carnevalMode ? "#ff9d00" : newYearMode ? "#d4af37" : "#ffffff";
-  const secondaryColor = carnevalMode ? "#ff4d00" : newYearMode ? "#9a7b0c" : "#cbd5e1";
+  const primaryColor = easterMode ? "#2e7d32" : carnevalMode ? "#ff9d00" : newYearMode ? "#d4af37" : "#ffffff";
+  const secondaryColor = easterMode ? "#66bb6a" : carnevalMode ? "#ff4d00" : newYearMode ? "#9a7b0c" : "#cbd5e1";
 
   return (
     <div className={`relative flex items-center justify-center ${className}`}>
@@ -37,13 +38,17 @@ export const Logo: React.FC<Props> = ({ className = "h-16 w-16", src, newYearMod
               0%, 100% { filter: drop-shadow(0 0 15px rgba(255, 157, 0, 0.6)); transform: scale(1) rotate(-2deg); }
               50% { filter: drop-shadow(0 0 35px rgba(255, 157, 0, 0.9)); transform: scale(1.1) rotate(2deg); }
             }
+            @keyframes rh-glow-easter {
+              0%, 100% { filter: drop-shadow(0 0 15px rgba(152, 251, 152, 0.6)); transform: scale(1); }
+              50% { filter: drop-shadow(0 0 35px rgba(255, 182, 193, 0.9)); transform: scale(1.08); }
+            }
             @keyframes needle-swing {
               0% { transform: rotate(-3deg); }
               50% { transform: rotate(4deg); }
               100% { transform: rotate(-3deg); }
             }
             .rh-monogram {
-              animation: ${carnevalMode ? 'rh-glow-carneval 3s infinite ease-in-out' : newYearMode ? 'rh-glow-gold 4s infinite ease-in-out' : 'rh-glow-white 4s infinite ease-in-out'};
+              animation: ${easterMode ? 'rh-glow-easter 4s infinite ease-in-out' : carnevalMode ? 'rh-glow-carneval 3s infinite ease-in-out' : newYearMode ? 'rh-glow-gold 4s infinite ease-in-out' : 'rh-glow-white 4s infinite ease-in-out'};
               transform-origin: center;
               display: inline-block;
             }
@@ -65,6 +70,11 @@ export const Logo: React.FC<Props> = ({ className = "h-16 w-16", src, newYearMod
                 {/* Carneval Räppli in Logo */}
                 {carnevalMode && [1,2,3,4,5,6].map(i => (
                   <circle key={i} cx={50 + i*20} cy={40 + (i%2)*10} r="3" fill={['#ff4d4d', '#ffdb4d', '#4db8ff'][i%3]} opacity="0.8" />
+                ))}
+
+                {/* Easter Eggs in Logo */}
+                {easterMode && [1,2,3].map(i => (
+                  <ellipse key={i} cx={40 + i*40} cy={45} rx="10" ry="14" fill={['#FFB6C1', '#FFFACD', '#E0FFFF'][i%3]} opacity="0.8" transform={`rotate(${i*10} ${40 + i*40} 45)`} />
                 ))}
 
                 <g transform="translate(120, 125)" opacity="0.4">

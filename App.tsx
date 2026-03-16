@@ -16,16 +16,21 @@ import { generateSpeech } from './services/geminiService';
 import { Settings, ArrowRight, Volume2, Plus, Sparkles, Instagram, Utensils, Calendar, Coffee, Wine, Pizza, Mail, Maximize2, X } from 'lucide-react';
 
 const INITIAL_MENU: MenuItem[] = [
-  // WOCHEN MENÜ
-  { id: 'wm1', name: "Poulet Schnitzel", description: "mit Currysauce, Butterreis und Salat", price: 21.50, category: 'Wochenmenü', available: true, image: "https://images.unsplash.com/photo-1594759844614-3c27e956bc5a?auto=format&fit=crop&q=80&w=1200" },
-  { id: 'wm2', name: "Spaghetti Alio e Olio", description: "serviert mit einem frischen Beilagensalat", price: 17.50, category: 'Wochenmenü', available: true, image: "https://images.unsplash.com/photo-1551183053-bf91a1d81141?auto=format&fit=crop&q=80&w=1200" },
+  // THAI MONTAGS-TAGESMENÜ (Neu)
+  { id: 'tm1', name: "Pouletspiessli mit Erdnusssauce", description: "Zarte Pouletspiessli mit hausgemachter Erdnusssauce und frischem Salat", price: 16.00, category: 'Wochenmenü', available: true, image: "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?auto=format&fit=crop&q=80&w=1200" },
+  { id: 'tm2', name: "Panang Curry mit Rindfleisch", description: "Authentisches Panang Curry mit Rindfleisch, langen Bohnen und Jasminreis", price: 21.00, category: 'Wochenmenü', available: true, image: "https://images.unsplash.com/photo-1455619452474-d2be8b1e70cd?auto=format&fit=crop&q=80&w=1200" },
+  { id: 'tm3', name: "Poulet mit Cashewnüssen", description: "Knusprig gebratenes Poulet mit Cashewnüssen, Gemüse und Jasminreis", price: 19.00, category: 'Wochenmenü', available: true, image: "https://images.unsplash.com/photo-1525755662778-989d0524087e?auto=format&fit=crop&q=80&w=1200" },
+  { id: 'tm4', name: "Gebratene Ente mit Ingwer", description: "Gebratene Ente mit frischem Ingwer, Wok-Gemüse und Eiernudeln", price: 24.00, category: 'Wochenmenü', available: true, image: "https://images.unsplash.com/photo-1512058560366-cd242959b4fe?auto=format&fit=crop&q=80&w=1200" },
+  { id: 'tm5', name: "Gebratene gelbe Nudeln (Vegi)", description: "Gebratene gelbe Nudeln mit Tofu und knackigem Gemüse", price: 17.00, category: 'Wochenmenü', available: true, image: "https://images.unsplash.com/photo-1585032226651-759b368d7246?auto=format&fit=crop&q=80&w=1200" },
+  { id: 'tm6', name: "Asiatischer gemischter Salat", description: "Frischer Marktsalat mit asiatischem Dressing", price: 9.50, category: 'Vorspeise', available: true, image: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&q=80&w=1200" },
+  { id: 'tm7', name: "Vegetarische Glasnudelsuppe", description: "Klare Suppe mit Glasnudeln und feinem Gemüse", price: 10.50, category: 'Vorspeise', available: true, image: "https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&q=80&w=1200" },
 
-  // SPARGEL SAISON
-  { id: 'sp1', name: "Spargel Teller Classic", description: "Weisser Spargel mit Sauce Hollandaise dazu neue Kartoffeln", price: 29.00, category: 'Saison', available: true, image: "https://images.unsplash.com/photo-1515471209610-dae1c92d81fe?auto=format&fit=crop&q=80&w=1200" },
-  { id: 'sp2', name: "Spargel & Kalb Deluxe", description: "Weisser Spargel mit Sauce Hollandaise dazu Kalbsschnitzel natur", price: 42.00, category: 'Saison', available: true, image: "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&q=80&w=1200" },
-  { id: 'sp3', name: "Spargel & Poulet Light", description: "Grüner Spargel mit Pouletbrust vom Grill an Weisswein-Zitronensauce", price: 34.00, category: 'Saison', available: true, image: "https://images.unsplash.com/photo-1432139555190-58524dae6a55?auto=format&fit=crop&q=80&w=1200" },
+  // OSTERN SAISON
+  { id: 'sp1', name: "Oster-Brunch Teller", description: "Hausgemachter Zopf, gefärbtes Ei, Schinken und Käseauswahl", price: 24.00, category: 'Saison', available: true, image: "https://images.unsplash.com/photo-1521483451569-e33803c0330c?auto=format&fit=crop&q=80&w=1200" },
+  { id: 'sp2', name: "Lammgigot 'Provençale'", description: "mit Rosmarinkartoffeln und Speckbohnen", price: 38.00, category: 'Saison', available: true, image: "https://images.unsplash.com/photo-1551183053-bf91a1d81141?auto=format&fit=crop&q=80&w=1200" },
+  { id: 'sp3', name: "Osterfladen Classic", description: "Traditioneller Milchreiskuchen mit Mandeln und Sultaninen", price: 8.50, category: 'Dessert', available: true, image: "https://images.unsplash.com/photo-1519340333755-5072134d2371?auto=format&fit=crop&q=80&w=1200" },
   { id: 'sp4', name: "Spargel & Lachs", description: "Weisser Spargel mit gebratenem Lachs an Zitronen-Hollandaise", price: 39.00, category: 'Saison', available: true, image: "https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&q=80&w=1200" },
-  { id: 'sp5', name: "Spargel Pasta", description: "Spaghetti mit grünem Spargel & Cherry-Tomaten an Basilikum-Pesto", price: 24.00, category: 'Saison', available: true, image: "https://images.unsplash.com/photo-1473093226795-af9932fe5856?auto=format&fit=crop&q=80&w=1200" },
+  { id: 'sp5', name: "Frühlings-Quiche", description: "mit jungem Spinat, Feta und Pinienkernen", price: 19.50, category: 'Saison', available: true, image: "https://images.unsplash.com/photo-1551183053-bf91a1d81141?auto=format&fit=crop&q=80&w=1200" },
   { id: 'sp6', name: "Frühlingssalat", description: "Bunter Blattsalat mit Spargel, Erdbeeren, Nüssen & Hausdressing", price: 15.00, category: 'Salate', available: true, image: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&q=80&w=1200" },
 
   // VOM RIND
@@ -44,12 +49,42 @@ const INITIAL_MENU: MenuItem[] = [
   // VOM POULET
   { id: 'po1', name: "Poulet Cordon Bleu", description: "mit Pommes Frites", price: 24.00, category: 'Hauptgang', available: true, image: "https://images.unsplash.com/photo-1562967914-6c827383d944?auto=format&fit=crop&q=80&w=1200" },
 
+  // KINDERMENÜ
+  { id: 'ki1', name: "SCHNIPO - Kindermenü", description: "Frisch paniertes Poulet Schnitzel mit knusprigen Pommes Frites und einem 2dl Softgetränk nach Wahl", price: 14.00, category: 'Kinder', available: true, image: "https://ais-pre-v3wsisszcdhftsrhskqmqj-24472229364.europe-west1.run.app/api/media/schnipo.png" },
+
   // VOM FISCH
   { id: 'fi1', name: "Eglifilet Müllerin Art", description: "mit Butterreis & Spinat", price: 31.00, category: 'Hauptgang', available: true, image: "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?auto=format&fit=crop&q=80&w=1200" },
-  { id: 'fi2', name: "Zanderfilet Steak", description: "gebraten mit Buttergemüse an Weisswein-Zitronensauce", price: 31.00, category: 'Hauptgang', available: true, image: "https://images.unsplash.com/photo-1551248429-42207185c7d8?auto=format&fit=crop&q=80&w=1200" }
+  { id: 'fi2', name: "Zanderfilet Steak", description: "gebraten mit Buttergemüse an Weisswein-Zitronensauce", price: 31.00, category: 'Hauptgang', available: true, image: "https://images.unsplash.com/photo-1551248429-42207185c7d8?auto=format&fit=crop&q=80&w=1200" },
+
+  // GETRÄNKE - KAFFEE & HEISSGETRÄNKE
+  { id: 'g1', name: "Kaffe Creme", description: "Frisch gebrühter Kaffee", price: 4.00, category: 'Getränke', available: true, image: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&q=80&w=1200" },
+  { id: 'g2', name: "Kaffe Affogatto", description: "Espresso mit einer Kugel Vanilleeis", price: 6.00, category: 'Getränke', available: true, image: "https://images.unsplash.com/photo-1594133900913-76129c9846a8?auto=format&fit=crop&q=80&w=1200" },
+  { id: 'g3', name: "Espresso", description: "Kräftiger italienischer Espresso", price: 4.00, category: 'Getränke', available: true, image: "https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&q=80&w=1200" },
+  { id: 'g4', name: "Cappuccino", description: "mit feinem Milchschaum", price: 4.50, category: 'Getränke', available: true, image: "https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&q=80&w=1200" },
+  { id: 'g5', name: "Latte Macchiato", description: "Drei Schichten Genuss", price: 5.50, category: 'Getränke', available: true, image: "https://images.unsplash.com/photo-1599398054066-846f28917f38?auto=format&fit=crop&q=80&w=1200" },
+  { id: 'g6', name: "Ovomaltine / Caotina", description: "Heisse Schokolade (gross)", price: 6.00, category: 'Getränke', available: true, image: "https://images.unsplash.com/photo-1544787210-228394c3d3e0?auto=format&fit=crop&q=80&w=1200" },
+  { id: 'g7', name: "Tee Auswahl", description: "Schwarz, Kamille, Verbene, Minze, Grün, Früchte, Lindenblüten", price: 3.50, category: 'Getränke', available: true, image: "https://images.unsplash.com/photo-1544787210-228394c3d3e0?auto=format&fit=crop&q=80&w=1200" },
+  { id: 'g8', name: "Türkischer Tee", description: "Original im Glas serviert", price: 2.50, category: 'Getränke', available: true, image: "https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&q=80&w=1200" },
+
+  // SOFTGETRÄNKE
+  { id: 's1', name: "Coca Cola / Zero", description: "33cl Flasche", price: 5.00, category: 'Getränke', available: true, image: "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&q=80&w=1200" },
+  { id: 's2', name: "Ramseier Apfelschorle", description: "33cl Flasche", price: 5.00, category: 'Getränke', available: true, image: "https://images.unsplash.com/photo-1613478223719-2ab80260f003?auto=format&fit=crop&q=80&w=1200" },
+  { id: 's3', name: "Rivella rot / blau", description: "33cl Flasche", price: 5.00, category: 'Getränke', available: true, image: "https://images.unsplash.com/photo-1527960669566-f882ba85a4c6?auto=format&fit=crop&q=80&w=1200" },
+  { id: 's4', name: "Mineralwasser", description: "5dl mit oder ohne Kohlensäure", price: 6.00, category: 'Getränke', available: true, image: "https://images.unsplash.com/photo-1523362628745-0c100150b504?auto=format&fit=crop&q=80&w=1200" },
+
+  // BIER
+  { id: 'b1', name: "Feldschlösschen Original", description: "33cl Flasche", price: 5.70, category: 'Getränke', available: true, image: "https://images.unsplash.com/photo-1535958636474-b021ee887b13?auto=format&fit=crop&q=80&w=1200" },
+  { id: 'b2', name: "Grosses Bier (Offen)", description: "5dl Feldschlösschen", price: 5.70, category: 'Getränke', available: true, image: "https://images.unsplash.com/photo-1535958636474-b021ee887b13?auto=format&fit=crop&q=80&w=1200" },
+
+  // SPIRITUOSEN - WHISKY
+  { id: 'w1', name: "Chivas Regal 12 Years", description: "Blended Scotch Whisky (4cl)", price: 8.00, category: 'Spirituosen', available: true, image: "https://images.unsplash.com/photo-1527281405159-35d5b5aa7c1c?auto=format&fit=crop&q=80&w=1200" },
+  { id: 'w2', name: "Glenfiddich 12 Years", description: "Single Malt Scotch Whisky (4cl)", price: 10.00, category: 'Spirituosen', available: true, image: "https://images.unsplash.com/photo-1527281405159-35d5b5aa7c1c?auto=format&fit=crop&q=80&w=1200" },
+  { id: 'w3', name: "Lagavulin 16 Years", description: "Single Malt Scotch Whisky (4cl)", price: 18.00, category: 'Spirituosen', available: true, image: "https://images.unsplash.com/photo-1527281405159-35d5b5aa7c1c?auto=format&fit=crop&q=80&w=1200" },
+  { id: 'w4', name: "Jack Daniels Single Barrel", description: "Tennessee Whiskey (4cl)", price: 13.00, category: 'Spirituosen', available: true, image: "https://images.unsplash.com/photo-1527281405159-35d5b5aa7c1c?auto=format&fit=crop&q=80&w=1200" },
+  { id: 'w5', name: "Talisker 10 Years", description: "Single Malt Whisky (4cl)", price: 12.00, category: 'Spirituosen', available: true, image: "https://images.unsplash.com/photo-1527281405159-35d5b5aa7c1c?auto=format&fit=crop&q=80&w=1200" }
 ];
 
-const CATEGORIES: Category[] = ['Alle', 'Wochenmenü', 'Saison', 'Hauptgang', 'Vorspeise', 'Salate', 'Dessert', 'Getränke'];
+const CATEGORIES: Category[] = ['Alle', 'Wochenmenü', 'Saison', 'Hauptgang', 'Kinder', 'Vorspeise', 'Salate', 'Dessert', 'Getränke', 'Spirituosen'];
 
 async function decodePCM(data: Uint8Array, ctx: AudioContext, sampleRate: number, numChannels: number): Promise<AudioBuffer> {
   const dataInt16 = new Int16Array(data.buffer);
@@ -68,7 +103,7 @@ export default function App() {
   const [userMode, setUserMode] = useState<'customer' | 'staff'>('customer');
   const [language, setLanguage] = useState<Language>('de');
   const [selectedCategory, setSelectedCategory] = useState<Category>('Alle');
-  const [carnevalMode, setCarnevalMode] = useState(true);
+  const [easterMode, setEasterMode] = useState(true);
   const [lightboxItem, setLightboxItem] = useState<MenuItem | null>(null);
   
   const [menu, setMenu] = useState<MenuItem[]>(() => {
@@ -100,8 +135,8 @@ export default function App() {
   
   const [currentGuest] = useState<GuestUser>({
     id: 'guest-1',
-    name: 'Fasnacht Gast',
-    instagramHandle: '@basler_fasnacht_hafen',
+    name: 'Oster Gast',
+    instagramHandle: '@rheinhafen_ostern',
     isActivated: true,
     permissions: { readProfile: true, postToFeed: true, manageMedia: true }
   });
@@ -159,37 +194,37 @@ export default function App() {
   const t = UI_STRINGS[language];
 
   return (
-    <div className={`min-h-screen bg-[#1a0f00] text-white flex flex-col relative overflow-x-hidden ${carnevalMode ? 'selection:bg-orange-500' : 'selection:bg-blue-500'}`}>
-      {carnevalMode && <Confetti />}
+    <div className={`min-h-screen ${easterMode ? 'bg-[#f7fff7]' : 'bg-[#001C30]'} text-white flex flex-col relative overflow-x-hidden ${easterMode ? 'selection:bg-green-500' : 'selection:bg-blue-500'}`}>
+      {easterMode && <Confetti easterMode={easterMode} />}
       
       {!hasStarted ? (
-        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-6 text-center bg-[#1a0f00]">
-          <Logo className="w-48 h-48 mb-8 animate-bounce" carnevalMode={carnevalMode} />
-          <h1 className="text-5xl md:text-8xl font-bold brand-font mb-4 uppercase tracking-tighter text-orange-500">RHEINHAFEN</h1>
-          <p className="text-orange-200/40 mb-8 uppercase tracking-[0.5em] text-xs font-black">Basler Fasnacht am Hafen</p>
-          <button onClick={handleStart} className="px-12 py-6 bg-orange-600 rounded-3xl font-black text-xl shadow-2xl hover:scale-105 transition-all flex items-center gap-4 text-white">
-            Morgestraich! <ArrowRight />
+        <div className={`fixed inset-0 z-[100] flex flex-col items-center justify-center p-6 text-center ${easterMode ? 'bg-[#f7fff7]' : 'bg-[#001C30]'}`}>
+          <Logo className="w-48 h-48 mb-8 animate-bounce" easterMode={easterMode} />
+          <h1 className={`text-5xl md:text-8xl font-bold brand-font mb-4 uppercase tracking-tighter ${easterMode ? 'text-green-600' : 'text-green-400'}`}>RHEINHAFEN</h1>
+          <p className={`${easterMode ? 'text-green-800/40' : 'text-green-200/40'} mb-8 uppercase tracking-[0.5em] text-xs font-black`}>Ostern am Hafen</p>
+          <button onClick={handleStart} className="px-12 py-6 bg-green-600 rounded-3xl font-black text-xl shadow-2xl hover:scale-105 transition-all flex items-center gap-4 text-white">
+            Eier suchen! <ArrowRight />
           </button>
         </div>
       ) : (
         <>
-          <header className={`sticky top-0 z-40 ${carnevalMode ? 'bg-orange-900/90' : 'bg-[#001C30]/90'} backdrop-blur-xl border-b border-white/10 p-4 flex justify-between items-center`}>
+          <header className={`sticky top-0 z-40 ${easterMode ? 'bg-white/80' : 'bg-[#001C30]/90'} backdrop-blur-xl border-b border-black/5 p-4 flex justify-between items-center`}>
             <div className="flex items-center gap-4 cursor-pointer" onClick={() => scrollToSection('top')}>
-              <Logo className="w-10 h-10" carnevalMode={carnevalMode} />
+              <Logo className="w-10 h-10" easterMode={easterMode} />
               <div className="hidden sm:block">
-                <h1 className="font-bold brand-font text-lg text-orange-400">Rheinhafen</h1>
+                <h1 className={`font-bold brand-font text-lg ${easterMode ? 'text-green-700' : 'text-green-400'}`}>Rheinhafen</h1>
               </div>
             </div>
             
             <nav className="hidden lg:flex gap-6 items-center">
-              <button onClick={() => scrollToSection('menu-section')} className="text-xs font-black uppercase tracking-widest hover:text-orange-400 transition-colors">Speisekarte</button>
-              <button onClick={() => scrollToSection('social-section')} className="text-xs font-black uppercase tracking-widest hover:text-pink-400 transition-colors">Instagram</button>
-              <button onClick={() => setIsReservationOpen(true)} className="text-xs font-black uppercase tracking-widest hover:text-yellow-400 transition-colors">Reservation</button>
-              <button onClick={() => setIsContactOpen(true)} className="text-xs font-black uppercase tracking-widest hover:text-orange-400 transition-colors">Kontakt</button>
+              <button onClick={() => scrollToSection('menu-section')} className={`text-xs font-black uppercase tracking-widest ${easterMode ? 'text-green-800 hover:text-green-600' : 'text-white hover:text-green-400'} transition-colors`}>Speisekarte</button>
+              <button onClick={() => scrollToSection('social-section')} className={`text-xs font-black uppercase tracking-widest ${easterMode ? 'text-green-800 hover:text-pink-600' : 'text-white hover:text-pink-400'} transition-colors`}>Instagram</button>
+              <button onClick={() => setIsReservationOpen(true)} className={`text-xs font-black uppercase tracking-widest ${easterMode ? 'text-green-800 hover:text-yellow-600' : 'text-white hover:text-yellow-400'} transition-colors`}>Reservation</button>
+              <button onClick={() => setIsContactOpen(true)} className={`text-xs font-black uppercase tracking-widest ${easterMode ? 'text-green-800 hover:text-green-600' : 'text-white hover:text-green-400'} transition-colors`}>Kontakt</button>
             </nav>
 
             <div className="flex gap-3 items-center">
-               <button onClick={() => setCarnevalMode(!carnevalMode)} className={`p-2 rounded-full border border-white/10 ${carnevalMode ? 'bg-orange-600' : 'bg-white/5'}`}>
+               <button onClick={() => setEasterMode(!easterMode)} className={`p-2 rounded-full border border-black/10 ${easterMode ? 'bg-green-600 text-white' : 'bg-white/5 text-white'}`}>
                   <Sparkles size={16} />
                </button>
                <button onClick={() => isAuthenticated ? setUserMode(userMode === 'customer' ? 'staff' : 'customer') : setShowLogin(true)} className="p-2 rounded-full border border-white/10 bg-white/5">
@@ -205,17 +240,17 @@ export default function App() {
             ) : (
               <div className="space-y-32">
                 <section className="text-center space-y-8 animate-in fade-in duration-1000 py-20">
-                   <h2 className="text-6xl md:text-9xl font-bold brand-font uppercase leading-none tracking-tighter text-orange-500">
-                      {carnevalMode ? 'Hoi\nFasnacht' : 'Echt\nBasel'}
+                   <h2 className="text-6xl md:text-9xl font-bold brand-font uppercase leading-none tracking-tighter text-green-400">
+                      {easterMode ? 'Frohe\nOstern' : 'Echt\nBasel'}
                    </h2>
-                   <div className="bg-orange-600/10 border border-orange-500/20 p-6 rounded-3xl max-w-lg mx-auto">
-                      <p className="text-orange-200 text-sm font-black uppercase tracking-widest mb-2 flex items-center justify-center gap-2">
-                        <Sparkles size={14} /> Spezialität: Basler Mehlsuppe verfügbar!
+                   <div className="bg-green-600/10 border border-green-500/20 p-6 rounded-3xl max-w-lg mx-auto">
+                      <p className="text-green-200 text-sm font-black uppercase tracking-widest mb-2 flex items-center justify-center gap-2">
+                        <Sparkles size={14} /> Oster-Spezialität: Frischer Osterfladen!
                       </p>
                    </div>
-                   <p className="text-orange-100/40 text-lg max-w-2xl mx-auto italic">"{t.introText}"</p>
+                   <p className="text-green-100/40 text-lg max-w-2xl mx-auto italic">"{t.introText}"</p>
                    <div className="flex flex-wrap justify-center gap-4">
-                      <button onClick={() => setIsReservationOpen(true)} className="px-10 py-5 bg-orange-600 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl flex items-center gap-2 hover:bg-orange-500 transition-all">
+                      <button onClick={() => setIsReservationOpen(true)} className="px-10 py-5 bg-green-600 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl flex items-center gap-2 hover:bg-green-500 transition-all">
                         <Calendar size={18} /> Tisch Reservieren
                       </button>
                    </div>
@@ -224,14 +259,14 @@ export default function App() {
                 <section id="menu-section" className="scroll-mt-24">
                    <div className="flex items-center justify-between mb-12">
                       <div className="flex items-center gap-4">
-                        <Utensils className="text-orange-500" size={32} />
-                        <h3 className="text-4xl font-bold brand-font uppercase text-orange-400">Speisekarte</h3>
+                        <Utensils className="text-green-500" size={32} />
+                        <h3 className="text-4xl font-bold brand-font uppercase text-green-400">Speisekarte</h3>
                       </div>
                    </div>
                    
                    <div className="flex gap-2 overflow-x-auto no-scrollbar mb-12 pb-4 border-b border-white/5">
                       {CATEGORIES.map(cat => (
-                        <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-8 py-3 rounded-full text-[10px] font-black uppercase tracking-widest border shrink-0 transition-all ${selectedCategory === cat ? 'bg-orange-600 border-orange-400 text-white shadow-lg' : 'bg-white/5 border-white/10 text-white/40'}`}>
+                        <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-8 py-3 rounded-full text-[10px] font-black uppercase tracking-widest border shrink-0 transition-all ${selectedCategory === cat ? 'bg-green-600 border-green-400 text-white shadow-lg' : 'bg-white/5 border-white/10 text-white/40'}`}>
                           {cat}
                         </button>
                       ))}
@@ -241,7 +276,7 @@ export default function App() {
                       {menu
                         .filter(i => selectedCategory === 'Alle' || i.category === selectedCategory)
                         .map(item => (
-                          <div key={item.id} className="group relative bg-[#fff9f0] border border-[#e6d5bc] rounded-[3.5rem] overflow-hidden hover:shadow-[0_20px_50px_rgba(0,0,0,0.3)] transition-all flex flex-col shadow-xl animate-in zoom-in duration-500">
+                          <div key={item.id} className="group relative bg-[#f0fff0] border border-[#bcd5bc] rounded-[3.5rem] overflow-hidden hover:shadow-[0_20px_50px_rgba(0,0,0,0.3)] transition-all flex flex-col shadow-xl animate-in zoom-in duration-500">
                              <div className="aspect-[4/5] relative overflow-hidden cursor-zoom-in" onClick={() => setLightboxItem(item)}>
                                 <img src={item.image} className="w-full h-full object-cover transition-transform duration-[3s] group-hover:scale-110" alt={item.name} />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -250,24 +285,24 @@ export default function App() {
                                    </div>
                                 </div>
                                 <div className="absolute top-6 left-6">
-                                   <span className="bg-orange-900/90 backdrop-blur-md text-white text-[8px] px-4 py-2 rounded-full font-black uppercase tracking-widest border border-white/10 shadow-lg">
+                                   <span className="bg-green-900/90 backdrop-blur-md text-white text-[8px] px-4 py-2 rounded-full font-black uppercase tracking-widest border border-white/10 shadow-lg">
                                       {item.category}
                                    </span>
                                 </div>
                              </div>
                              
-                             <div className="p-10 space-y-4 flex-grow flex flex-col relative z-10 text-[#4a2e1e] bg-[url('https://www.transparenttextures.com/patterns/old-map.png')] bg-opacity-10">
+                             <div className="p-10 space-y-4 flex-grow flex flex-col relative z-10 text-[#1e4a1e] bg-[url('https://www.transparenttextures.com/patterns/old-map.png')] bg-opacity-10">
                                 <div className="flex justify-between items-start">
                                   <h4 className="text-2xl font-bold brand-font uppercase tracking-tight">{item.name}</h4>
-                                  <span className="text-xl font-black text-orange-800 tracking-tighter">CHF {item.price.toFixed(2)}</span>
+                                  <span className="text-xl font-black text-green-800 tracking-tighter">CHF {item.price.toFixed(2)}</span>
                                 </div>
-                                <p className="text-[#6d4c41] text-sm italic leading-relaxed">"{item.description}"</p>
+                                <p className="text-[#416d41] text-sm italic leading-relaxed">"{item.description}"</p>
                                 
-                                <div className="pt-8 border-t border-[#e6d5bc]/50 mt-4 flex items-center justify-between">
-                                  <button onClick={() => speakMenuItem(item)} className={`p-4 rounded-xl border transition-all ${speakingItemId === item.id ? 'bg-orange-600 text-white' : 'bg-[#e6d5bc]/30 text-[#4a2e1e] hover:bg-[#e6d5bc]/50'}`}>
+                                <div className="pt-8 border-t border-[#bcd5bc]/50 mt-4 flex items-center justify-between">
+                                  <button onClick={() => speakMenuItem(item)} className={`p-4 rounded-xl border transition-all ${speakingItemId === item.id ? 'bg-green-600 text-white' : 'bg-[#bcd5bc]/30 text-[#1e4a1e] hover:bg-[#bcd5bc]/50'}`}>
                                      <Volume2 size={18} />
                                   </button>
-                                  <button className="px-8 py-4 bg-orange-900 text-white rounded-2xl hover:bg-orange-800 transition-all text-[10px] font-black uppercase tracking-widest shadow-xl active:scale-95">
+                                  <button className="px-8 py-4 bg-green-900 text-white rounded-2xl hover:bg-green-800 transition-all text-[10px] font-black uppercase tracking-widest shadow-xl active:scale-95">
                                      Bestellen
                                   </button>
                                 </div>
@@ -279,11 +314,11 @@ export default function App() {
 
                 <section id="social-section" className="scroll-mt-24">
                    <div className="text-center mb-16 space-y-4">
-                      <div className="w-24 h-24 bg-gradient-to-tr from-orange-400 via-pink-500 to-purple-500 rounded-[2rem] rotate-12 flex items-center justify-center mx-auto mb-6 shadow-2xl">
+                      <div className="w-24 h-24 bg-gradient-to-tr from-green-400 via-yellow-300 to-pink-300 rounded-[2rem] rotate-12 flex items-center justify-center mx-auto mb-6 shadow-2xl">
                          <Instagram className="text-white" size={44} />
                       </div>
-                      <h3 className="text-4xl md:text-7xl font-bold brand-font uppercase tracking-tighter text-orange-500">Bilder vom Hafen</h3>
-                      <p className="text-orange-200/30 text-[10px] tracking-[0.4em] uppercase">Momente eingefangen von unseren Gästen</p>
+                      <h3 className="text-4xl md:text-7xl font-bold brand-font uppercase tracking-tighter text-green-400">Oster-Momente</h3>
+                      <p className="text-green-200/30 text-[10px] tracking-[0.4em] uppercase">Frühlingsgefühle am Hafen</p>
                    </div>
                    <SocialFeed posts={posts.filter(p => p.status === 'approved')} language={language} />
                 </section>
@@ -319,11 +354,11 @@ export default function App() {
           )}
 
           <footer className="p-24 border-t border-white/5 text-center bg-black/40">
-             <Logo className="w-20 h-20 grayscale opacity-20 mx-auto mb-10" carnevalMode={carnevalMode} />
-             <p className="text-[11px] font-black uppercase tracking-[0.5em] text-orange-200/20">Rheinhafen Kleinhüningen Basel · 4057</p>
+             <Logo className="w-20 h-20 grayscale opacity-20 mx-auto mb-10" easterMode={easterMode} />
+             <p className="text-[11px] font-black uppercase tracking-[0.5em] text-green-200/20">Rheinhafen Kleinhüningen Basel · 4057</p>
           </footer>
 
-          <ChatBot menu={menu} posts={posts} language={language} carnevalMode={carnevalMode} autoStart={hasStarted} />
+          <ChatBot menu={menu} posts={posts} language={language} easterMode={easterMode} autoStart={hasStarted} />
           <StaffLoginModal isOpen={showLogin} onClose={() => setShowLogin(false)} onLogin={p => { if(p==='1234'){setIsAuthenticated(true);setUserMode('staff');return true;} return false;}} language={language} />
           <ReservationModal isOpen={isReservationOpen} onClose={() => setIsReservationOpen(false)} language={language} onReserve={r => setReservations(prev => [r, ...prev])} />
           <ContactModal isOpen={isContactOpen} onClose={() => setIsContactOpen(false)} language={language} onSendMessage={m => setMessages(prev => [m, ...prev])} />
